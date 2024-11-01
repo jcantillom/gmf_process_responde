@@ -1,6 +1,7 @@
 import json
 from src.repositories.archivo_repository import ArchivoRepository
-from src.utils.s3_utils import check_file_exists_in_s3, extract_filename_from_body, extract_bucket_from_body
+from src.utils.s3_utils import check_file_exists_in_s3
+from src.utils.event_utils import extract_filename_from_body, extract_bucket_from_body
 from src.logs import logger as log
 from sqlalchemy.orm import Session
 
