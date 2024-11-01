@@ -2,10 +2,14 @@ import json
 import os
 import boto3
 from botocore.exceptions import ClientError
-from src.logs import logger as log
+from src.logs.logger import get_logger
+from src.utils.singleton import SingletonMeta
+from src.config.config import env
+
+logger = get_logger(env.DEBUG_MODE)
 
 
-class AWSClients:
+class AWSClients(metaclass=SingletonMeta):
     _secrets_client = None
     _s3_client = None
     _sqs_client = None
@@ -34,7 +38,7 @@ class AWSClients:
         endpoint_url = None
         if os.getenv("APP_ENV") == "local":
             endpoint_url = "http://localhost:4566"
-            log.logger.debug("Conectando a LocalStack para servicio: %s", service_name)
+            logger.debug("Conectando a LocalStack para servicio: %s", service_name)
 
         return boto3.client(
             service_name,
@@ -53,5 +57,5 @@ class AWSClients:
             secret = get_secret_value_response["SecretString"]
             return json.loads(secret)
         except ClientError as e:
-            log.logger.error("Error al obtener el secreto %s: %s", secret_name, e)
+            logger.error("Error al obtener el secreto %s: %s", secret_name, e)
             return {}

@@ -1,6 +1,9 @@
 import json
 import os
-from src.logs import logger as log
+from src.logs.logger import get_logger
+from src.config.config import env
+
+logger = get_logger(env.DEBUG_MODE)
 
 
 def load_local_event():
@@ -14,11 +17,11 @@ def load_local_event():
     try:
         with open(file_path, 'r') as file:
             event_data = json.load(file)
-            log.logger.debug("Archivo de prueba local cargado exitosamente: %s", file_path)
+            logger.debug("Archivo de prueba local cargado exitosamente: %s", file_path)
             return event_data
     except FileNotFoundError:
-        log.logger.error("Archivo de prueba no encontrado en %s", file_path)
+        logger.error("Archivo de prueba no encontrado en %s", file_path)
     except json.JSONDecodeError:
-        log.logger.error("Error al parsear el archivo JSON: %s", file_path)
+        logger.error("Error al parsear el archivo JSON: %s", file_path)
 
     return {}  # Retorna un evento vacío en caso de error

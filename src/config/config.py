@@ -1,10 +1,11 @@
-# src/config/config.py
 import os
 import sys
-
 from pydantic_settings import BaseSettings
 from pydantic import ValidationError
-from src.logs.logger import logger  # Asegúrate de que el logger esté configurado
+from src.logs.logger import get_logger
+from src.utils.singleton import SingletonMeta
+
+logger = get_logger(__name__)
 
 
 class EnvironmentSettings(BaseSettings):
@@ -16,6 +17,8 @@ class EnvironmentSettings(BaseSettings):
     DB_HOST: str
     DB_PORT: int
     DB_NAME: str
+    DEBUG_MODE: bool
+    SQS_URL_PRO_RESPONSE_TO_PROCESS: str
 
     class Config:
         env_file = os.path.join(os.getcwd(), ".env")
@@ -29,7 +32,6 @@ except ValidationError as e:
     for error in e.errors():
         field = error.get("loc", ["Campo desconocido"])[0]
         error_message = error.get("msg", "Error de validación no especificado")
-        logger.error(f"Error en la configuración de '{field}': {error_message}")
-    logger.error(
-        "Errores encontrados en las variables de entorno. Verifica las variables de entorno y vuelve a intentarlo.")
+        logger.error(f"Error de validación en el campo '{field}': {error_message}")
+    logger.error("Errores encontrados en la validación de las variables de entorno, verifique el archivo '.env'")
     sys.exit(1)

@@ -1,10 +1,12 @@
 from .config import env
 from src.connection.database import DataAccessLayer
 from src.controllers.sqs_controller import process_sqs_message
-from src.logs import logger as log
+from src.logs.logger import get_logger
+
+logger = get_logger(env.DEBUG_MODE)
 
 if env.APP_ENV == "local":
-    from local.load_event import load_local_event
+    from local.load_event import load_local_event, logger
 
 
 def initialize_lambda(event, context):
@@ -20,4 +22,4 @@ def initialize_lambda(event, context):
     with dal.session_scope() as session:
         process_sqs_message(event, session)
 
-    log.logger.info("Proceso de Lambda completado")
+    logger.info("Proceso de Lambda completado")

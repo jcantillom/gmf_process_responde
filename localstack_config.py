@@ -51,12 +51,6 @@ s3_client = boto3.client('s3', endpoint_url=endpoint_url)
 bucket_name = "01-bucketrtaprocesa-d01"
 s3_client.create_bucket(Bucket=bucket_name)
 
-# Crear las carpetas en el bucket
-# folders = ["Recibidos/", "Procesando/", "Rechazados/", "Procesados/"]
-# for folder in folders:
-#     s3_client.put_object(Bucket=bucket_name, Key=folder)
-
-# Crear las carpetas en el bucket con un archivo .keep para evitar objetos vacíos
 folders = ["Recibidos/", "Procesando/", "Rechazados/", "Procesados/"]
 for folder in folders:
     s3_client.put_object(Bucket=bucket_name, Key=f"{folder}.keep", Body="")
