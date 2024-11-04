@@ -101,3 +101,18 @@ class RtaProcesamientoRepository:
             self.db.commit()
         else:
             raise Exception(f"No se encontró respuesta de procesamiento para el archivo con ID {id_archivo}")
+
+    def get_tipo_respuesta(self, id_archivo: int) -> str:
+        """
+        Obtiene el tipo de respuesta de una respuesta de procesamiento.
+
+        :param id_archivo: ID del archivo.
+        :return: Tipo de respuesta.
+        """
+        # Obtiene la última respuesta de procesamiento
+        last_entry = self.db.query(CGDRtaProcesamiento) \
+            .filter(CGDRtaProcesamiento.id_archivo == id_archivo) \
+            .order_by(CGDRtaProcesamiento.id_rta_procesamiento.desc()) \
+            .first()
+
+        return last_entry.tipo_respuesta if last_entry else None

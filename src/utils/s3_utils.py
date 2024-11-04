@@ -112,22 +112,37 @@ class S3Utils:
         :param receipt_handle: El identificador del mensaje en la cola de SQS.
         :param error_handling_service: Instancia de ErrorHandlingService para manejar errores.
         """
+
+        # Obtener el tipo de respuesta del archivo.
+        tipo_respuesta = self.rta_procesamiento_repository.get_tipo_respuesta(id_archivo)
+        expected_file_count = {
+            "01": 5,
+            "02": 3,
+            "03": 2,
+        }.get(tipo_respuesta, None)
+
+        if expected_file_count is None:
+            self.logger.error(f"Tipo de respuesta no válido: {tipo_respuesta}")
+            return
+
         original_file_key = file_key
         file_key = file_key.replace(env.DIR_PROCESSING_FILES, env.DIR_RECEPTION_FILES)
 
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        base_folder = file_key.rsplit("/", 1)[0]  # Extrae la carpeta base (Procesando/AAAA/MM)
-        zip_filename = file_key.rsplit("/", 1)[-1].replace('.zip', '')
+        base_folder = original_file_key.rsplit("/", 1)[0]  # Extrae la carpeta base (Procesando/AAAA/MM)
+        zip_filename = original_file_key.rsplit("/", 1)[-1].replace('.zip', '')
         destination_folder = f"{base_folder}/{zip_filename}_{timestamp}/"
 
         try:
-            zip_obj = self.s3.get_object(Bucket=bucket_name, Key=file_key)
+            zip_obj = self.s3.get_object(Bucket=bucket_name, Key=original_file_key)
             self.logger.debug(f"zip_obj: {zip_obj}")
 
             with ZipFile(BytesIO(zip_obj['Body'].read())) as zip_file:
+                extracted_files = []
                 for file_info in zip_file.infolist():
                     # Crear la clave S3 para cada archivo descomprimido
                     extracted_file_key = f"{destination_folder}{file_info.filename}"
+                    extracted_files.append(extracted_file_key)
 
                     # Leer el contenido del archivo extraído
                     with zip_file.open(file_info) as extracted_file:
@@ -139,35 +154,83 @@ class S3Utils:
                         )
                         self.logger.debug(f"Archivo descomprimido subido: {extracted_file_key}")
 
+            # validacion de cantidad de archivos descomprimidos
+            if len(extracted_files) != expected_file_count:
+                self.logger.error(
+                    f"Error en el .zip descomprimido: {file_key}. "
+                    f"Se esperaban {expected_file_count} archivos, "
+                    f"pero se encontraron {len(extracted_files)}."
+                )
+                # # actualizar el estado de CGD_RTA_PROCESAMIENTO a RECHAZADO
+                # self.rta_procesamiento_repository.update_state_rta_procesamiento(
+                #     id_archivo=id_archivo,
+                #     estado=env.CONST_ESTADO_REJECTED
+                # )
+                #
+                # # actualizar el estado del archivo a PROCESAMIENTO_RECHAZADO
+                # self.archivo_repository.update_estado_archivo(
+                #     nombre_archivo,
+                #     env.CONST_ESTADO_PROCESAMIENTO_RECHAZADO,
+                #     contador_intentos_cargue=contador_intentos_cargue,
+                # )
+                #
+                # # llamamos al error_handling para enviar el mensaje de error
+                # error_handling_service.handle_file_error(
+                #     id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
+                #     filekey=file_key,
+                #     bucket=bucket_name,
+                #     receipt_handle=receipt_handle,
+                #     codigo_error=env.CONST_COD_ERROR_DECOMPRESION,
+                #     filename=nombre_archivo,
+                # )
+
+                # handling error
+                error_handling_service.handle_unzip_error(
+                    id_archivo=id_archivo,
+                    nombre_archivo=nombre_archivo,
+                    contador_intentos_cargue=contador_intentos_cargue,
+                    file_key=file_key,
+                    bucket_name=bucket_name,
+                    receipt_handle=receipt_handle,
+                )
+
             # Eliminar el archivo .zip original
-            self.s3.delete_object(Bucket=bucket_name, Key=file_key)
-            self.logger.debug(f"Archivo .zip original eliminado: {file_key}")
+            self.s3.delete_object(Bucket=bucket_name, Key=original_file_key)
+            self.logger.debug(f"Archivo .zip original eliminado: {original_file_key}")
             self.logger.info(f"Descompresión completada para {file_key} en {destination_folder}")
 
         except BadZipFile:
-            # actualizar el estado de CGD_RTA_PROCESAMIENTO a RECHAZADO
-            self.rta_procesamiento_repository.update_state_rta_procesamiento(
+            # # actualizar el estado de CGD_RTA_PROCESAMIENTO a RECHAZADO
+            # self.rta_procesamiento_repository.update_state_rta_procesamiento(
+            #     id_archivo=id_archivo,
+            #     estado=env.CONST_ESTADO_REJECTED
+            # )
+            #
+            # # actualizar el estado del archivo a PROCESAMIENTO_RECHAZADO
+            # self.archivo_repository.update_estado_archivo(
+            #     nombre_archivo,
+            #     env.CONST_ESTADO_PROCESAMIENTO_RECHAZADO,
+            #     contador_intentos_cargue=contador_intentos_cargue,
+            # )
+            #
+            # # llamamos al error_handling para enviar el mensaje de error
+            # error_handling_service.handle_file_error(
+            #     id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
+            #     filekey=file_key,
+            #     bucket=bucket_name,
+            #     receipt_handle="",
+            #     codigo_error=env.CONST_COD_ERROR_DECOMPRESION,
+            #     filename=nombre_archivo,
+            # )
+
+            # handling error
+            error_handling_service.handle_unzip_error(
                 id_archivo=id_archivo,
-                estado=env.CONST_ESTADO_REJECTED
-            )
-
-            # actualizar el estado del archivo a PROCESAMIENTO_RECHAZADO
-            self.archivo_repository.update_estado_archivo(
-                nombre_archivo,
-                env.CONST_ESTADO_PROCESAMIENTO_RECHAZADO,
+                nombre_archivo=nombre_archivo,
                 contador_intentos_cargue=contador_intentos_cargue,
-            )
-
-            # llamamos al error_handling para enviar el mensaje de error
-            print("file_key", file_key)
-            print("bucket_name", bucket_name)
-            error_handling_service.handle_file_error(
-                id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
-                filekey=file_key,
-                bucket=bucket_name,
-                receipt_handle="",
-                codigo_error=env.CONST_COD_ERROR_DECOMPRESION,
-                filename=nombre_archivo,
+                file_key=file_key,
+                bucket_name=bucket_name,
+                receipt_handle=receipt_handle,
             )
 
             self.logger.error(f"Error al descomprimir el archivo {file_key}: Archivo .zip inválido.")
