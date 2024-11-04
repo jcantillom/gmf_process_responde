@@ -10,6 +10,7 @@ logger = get_logger(env.DEBUG_MODE)
 
 
 class AWSClients(metaclass=SingletonMeta):
+    _ssm_client = None
     _secrets_client = None
     _s3_client = None
     _sqs_client = None
@@ -32,9 +33,14 @@ class AWSClients(metaclass=SingletonMeta):
             cls._sqs_client = cls._create_client('sqs')
         return cls._sqs_client
 
+    @classmethod
+    def get_ssm_client(cls):
+        if cls._ssm_client is None:
+            cls._ssm_client = cls._create_client('ssm')
+        return cls._ssm_client
+
     @staticmethod
     def _create_client(service_name):
-        # Si el entorno es 'local', conecta a LocalStack
         endpoint_url = None
         if os.getenv("APP_ENV") == "local":
             endpoint_url = "http://localhost:4566"
@@ -48,9 +54,6 @@ class AWSClients(metaclass=SingletonMeta):
 
     @staticmethod
     def get_secret(secret_name: str) -> dict:
-        """
-        Obtiene el secreto desde AWS Secrets Manager.
-        """
         client = AWSClients.get_secrets_manager_client()
         try:
             get_secret_value_response = client.get_secret_value(SecretId=secret_name)
@@ -59,3 +62,16 @@ class AWSClients(metaclass=SingletonMeta):
         except ClientError as e:
             logger.error("Error al obtener el secreto %s: %s", secret_name, e)
             return {}
+
+    @staticmethod
+    def get_parameter(parameter_name: str) -> str:
+        client = AWSClients.get_ssm_client()
+
+        try:
+            parameter_response = client.get_parameter(Name=parameter_name, WithDecryption=False)
+            parameter_value = parameter_response["Parameter"]["Value"]
+            logger.debug("Parámetro obtenido correctamente: %s", parameter_name)
+            return parameter_value
+        except ClientError as e:
+            logger.error("Error al obtener el parámetro %s: %s", parameter_name, e)
+            return ""

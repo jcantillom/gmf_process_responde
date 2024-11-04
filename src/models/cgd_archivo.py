@@ -41,10 +41,25 @@ class CGDArchivo(Base):
     gaw_rta_trans_estado = Column("gaw_rta_trans_estado", String(50))
     gaw_rta_trans_codigo = Column("gaw_rta_trans_codigo", String(4))
     gaw_rta_trans_detalle = Column("gaw_rta_trans_detalle", String(1000))
-    id_prc_genera_consol = Column("id_prc_genera_consol", Numeric(14),
-                                  ForeignKey("cgd_procesos_genera_consol.id_prc_genera_consol"))
     codigo_error = Column("codigo_error", String(30), ForeignKey("cgd_catalogo_errores.codigo_error"))
     detalle_error = Column("detalle_error", String(2000))
+
+    def __repr__(self):
+        return (f"<CGDArchivo(id_archivo={self.id_archivo}, "
+                f"nombre_archivo={self.nombre_archivo}, "
+                f"plataforma_origen={self.plataforma_origen}, "
+                f"tipo_archivo={self.tipo_archivo}, "
+                f"consecutivo_plataforma_origen={self.consecutivo_plataforma_origen}, "
+                f"fecha_nombre_archivo={self.fecha_nombre_archivo}, "
+                f"fecha_registro_resumen={self.fecha_registro_resumen}, "
+                f"nro_total_registros={self.nro_total_registros}, "
+                f"nro_registros_error={self.nro_registros_error}, "
+                f"nro_registros_validos={self.nro_registros_validos}, "
+                f"estado={self.estado}, "
+                f"fecha_recepcion={self.fecha_recepcion}, "
+                f"fecha_ciclo={self.fecha_ciclo}, "
+                f"contador_intentos_cargue={self.contador_intentos_cargue}, "
+                )
 
 
 class CGDArchivoEstado(Base):
@@ -55,3 +70,9 @@ class CGDArchivoEstado(Base):
     estado_final = Column("estado_final", String(50), primary_key=True)
     fecha_cambio_estado = Column("fecha_cambio_estado", TIMESTAMP, primary_key=True, nullable=False,
                                  default=datetime.now)
+
+    def __repr__(self):
+        return (f"<CGDArchivoEstado(id_archivo={self.id_archivo}, "
+                f"estado_inicial={self.estado_inicial}, "
+                f"estado_final={self.estado_final}, "
+                f"fecha_cambio_estado={self.fecha_cambio_estado})>")

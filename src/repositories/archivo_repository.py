@@ -1,6 +1,6 @@
 from typing import Type, Optional
 from sqlalchemy.orm import Session
-from src.models.archivo_models import CGDArchivo, CGDArchivoEstado
+from src.models.cgd_archivo import CGDArchivo, CGDArchivoEstado
 
 
 class ArchivoRepository:
@@ -19,5 +19,34 @@ class ArchivoRepository:
         :return: Instancia de CGDArchivo o None si no se encuentra.
         """
         return self.db.query(CGDArchivo).filter(
-            CGDArchivo.acg_nombre_archivo == nombre_archivo
+            CGDArchivo.acg_nombre_archivo == str(nombre_archivo)
         ).first()
+
+    def check_file_exists(self, nombre_archivo: str) -> bool:
+        """
+        Verifica si un archivo existe en la base de datos.
+
+        :param nombre_archivo: Nombre del archivo a buscar.
+        :return: True si existe, False si no.
+        """
+        archivo = self.get_archivo_by_nombre_archivo(nombre_archivo)
+        return archivo is not None
+
+    def update_estado_archivo(
+            self,
+            nombre_archivo: str,
+            estado: str,
+            contador_intentos_cargue: int) -> None:
+        """
+        Actualiza el estado de un archivo en la base de datos.
+
+
+        :param nombre_archivo: Nombre del archivo a actualizar.
+        :param estado: Nuevo estado del archivo.
+        :param contador_intentos_cargue: Contador de intentos de cargue.
+
+        """
+        archivo = self.get_archivo_by_nombre_archivo(nombre_archivo)
+        archivo.estado = estado
+        archivo.contador_intentos_cargue = contador_intentos_cargue
+        self.db.commit()
