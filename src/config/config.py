@@ -50,7 +50,7 @@ class EnvironmentSettings(BaseSettings):
     CONST_ESTADO_SEND: str
 
     class Config:
-        env_file = os.path.join(os.getcwd(), ".env")
+        env_file = ".env.testing" if "PYTEST_CURRENT_TEST" in os.environ else ".env"
         env_file_encoding = "utf-8"
 
 

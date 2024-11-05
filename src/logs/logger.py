@@ -1,5 +1,3 @@
-# src/logs/logger.py
-
 import logging
 import os
 import pytz

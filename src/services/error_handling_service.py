@@ -56,6 +56,7 @@ class ErrorHandlingService:
         delete_message_from_sqs(
             queue_url=env.SQS_URL_PRO_RESPONSE_TO_PROCESS,
             receipt_handle=receipt_handle,
+            filename=filename
         )
 
         # Obtener datos del error

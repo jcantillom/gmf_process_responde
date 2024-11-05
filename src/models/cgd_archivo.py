@@ -1,6 +1,7 @@
 from sqlalchemy import Column, Numeric, String, CHAR, SmallInteger, Date, TIMESTAMP, DECIMAL, ForeignKey
 from src.connection.database import Base
 from datetime import datetime
+from sqlalchemy.orm import relationship
 
 
 class CGDArchivo(Base):
@@ -44,6 +45,9 @@ class CGDArchivo(Base):
     codigo_error = Column("codigo_error", String(30), ForeignKey("cgd_catalogo_errores.codigo_error"))
     detalle_error = Column("detalle_error", String(2000))
 
+    estados = relationship("CGDArchivoEstado", back_populates="archivo")
+
+
     def __repr__(self):
         return (f"<CGDArchivo(id_archivo={self.id_archivo}, "
                 f"nombre_archivo={self.nombre_archivo}, "
@@ -65,11 +69,14 @@ class CGDArchivo(Base):
 class CGDArchivoEstado(Base):
     __tablename__ = "cgd_archivo_estados"
 
-    id_archivo = Column("id_archivo", Numeric(16), ForeignKey("cgd_archivos.id_archivo"), primary_key=True)
+    id_archivo = Column("id_archivo", Numeric(16),
+                        ForeignKey("cgd_archivos.id_archivo"), primary_key=True)
     estado_inicial = Column("estado_inicial", String(50))
     estado_final = Column("estado_final", String(50), primary_key=True)
     fecha_cambio_estado = Column("fecha_cambio_estado", TIMESTAMP, primary_key=True, nullable=False,
                                  default=datetime.now)
+
+    archivo = relationship("CGDArchivo", back_populates="estados")
 
     def __repr__(self):
         return (f"<CGDArchivoEstado(id_archivo={self.id_archivo}, "

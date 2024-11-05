@@ -1,6 +1,5 @@
 from datetime import datetime
 from sqlalchemy.orm import Session
-from sqlalchemy.exc import IntegrityError
 from src.models.cgd_archivo import CGDArchivoEstado
 from src.logs.logger import get_logger
 from src.config.config import env
@@ -32,14 +31,7 @@ class ArchivoEstadoRepository:
             fecha_cambio_estado=fecha_cambio_estado
         )
 
-        try:
-            # Agrega y confirma el nuevo estado en la base de datos
-            self.db.add(nuevo_estado)
-            self.db.commit()
-            self.db.refresh(nuevo_estado)
-
-        except IntegrityError as e:
-            # Agrega detalles del error original de SQLAlchemy
-            logger.error(f"Detalle de SQLAlchemy: {str(e)}")
-            # Revertir los cambios para mantener la consistencia en la base de datos
-            self.db.rollback()
+        # Agrega y confirma el nuevo estado en la base de datos
+        self.db.add(nuevo_estado)
+        self.db.commit()
+        self.db.refresh(nuevo_estado)

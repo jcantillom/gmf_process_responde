@@ -73,12 +73,12 @@ class RtaProcesamientoRepository:
 
         # TODO: validar si es necesario actualizar el estado del archivo
         # Actualizar el estado del archivo
-        nombre_archivo = self.archivo_validator.build_acg_nombre_archivo(nombre_archivo_zip)
-        self.archivo_repository.update_estado_archivo(
-            nombre_archivo,
-            estado,
-            contador_intentos_cargue
-        )
+        # nombre_archivo = self.archivo_validator.build_acg_nombre_archivo(nombre_archivo_zip)
+        # self.archivo_repository.update_estado_archivo(
+        #     nombre_archivo,
+        #     estado,
+        #     contador_intentos_cargue
+        # )
 
     def update_state_rta_procesamiento(
             self,

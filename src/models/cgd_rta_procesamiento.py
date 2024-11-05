@@ -1,12 +1,17 @@
 from sqlalchemy import CHAR, VARCHAR, Column, ForeignKey, Numeric, TIMESTAMP, Integer, Sequence
 from src.connection.database import Base
+from sqlalchemy.orm import relationship
 
 
 class CGDRtaProcesamiento(Base):
     __tablename__ = "cgd_rta_procesamiento"
 
-    id_archivo = Column("id_archivo", Numeric(16), primary_key=True)
-    id_rta_procesamiento = Column("id_rta_procesamiento", Integer, primary_key=True, autoincrement=True)
+    id_archivo = Column("id_archivo", Numeric(16), nullable=False)
+    id_rta_procesamiento = Column("id_rta_procesamiento",
+                                  Integer,
+                                  primary_key=True,
+                                  autoincrement=True
+                                  )
     nombre_archivo_zip = Column("nombre_archivo_zip", VARCHAR(100), nullable=False)
     tipo_respuesta = Column("tipo_respuesta", CHAR(2), nullable=False)
     fecha_recepcion = Column("fecha_recepcion", TIMESTAMP, nullable=False)

@@ -1,5 +1,6 @@
 from sqlalchemy import Numeric, SMALLINT, VARCHAR, Column, ForeignKey
 from src.connection.database import Base
+from sqlalchemy.orm import relationship
 
 
 class CGDRtaProArchivos(Base):
@@ -15,10 +16,14 @@ class CGDRtaProArchivos(Base):
         ForeignKey("cgd_rta_procesamiento.id_archivo"),
         primary_key=True,
     )
-    id_rta_procesamiento = Column("id_rta_procesamiento", Numeric(2),
-                                  ForeignKey("cgd_rta_procesamiento.id_rta_procesamiento"), primary_key=True)
+    id_rta_procesamiento = Column(
+        "id_rta_procesamiento",
+        Numeric(2),
+        ForeignKey("cgd_rta_procesamiento.id_rta_procesamiento"),
+        primary_key=True,
+    )
 
-    nombre_archivo = Column("nombre_archivo", VARCHAR(100), primary_key=True)
+    nombre_archivo = Column("nombre_archivo", VARCHAR(100), primary_key=True, nullable=False)
     tipo_archivo_rta = Column("tipo_archivo_rta", VARCHAR(30), nullable=False)
     estado = Column("estado", VARCHAR(30), nullable=False)
     contador_intentos_cargue = Column("contador_intentos_cargue", SMALLINT, nullable=False)
@@ -28,3 +33,6 @@ class CGDRtaProArchivos(Base):
     codigo_error = Column(
         "codigo_error", VARCHAR(30), ForeignKey("cgd_catalogo_errores.codigo_error"))
     detalle_error = Column("detalle_error", VARCHAR(2000))
+
+    # Relaciones
+    catalogo_errores = relationship("CGDCatalogoErrores", back_populates="rta_pro_archivos")
