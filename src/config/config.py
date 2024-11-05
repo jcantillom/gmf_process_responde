@@ -47,6 +47,7 @@ class EnvironmentSettings(BaseSettings):
     CONST_ESTADO_INIT_PENDING: str
     S3_BUCKET_NAME: str
     SQS_URL_PRO_RESPONSE_TO_CONSOLIDATE: str
+    CONST_ESTADO_SEND: str
 
     class Config:
         env_file = os.path.join(os.getcwd(), ".env")

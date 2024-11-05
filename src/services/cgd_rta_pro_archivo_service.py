@@ -39,7 +39,6 @@ class CGDRtaProArchivosService:
                 contador_intentos_cargue=0,
             )
             self.cgd_rta_pro_archivos_repository.insert(new_entry)
-            logger.info("Archivo registrado en CGD_RTA_PRO_ARCHIVOS: %s", file_name)
 
         logger.info("Archivos descomprimidos registrados en CGD_RTA_PRO_ARCHIVOS")
 
@@ -62,3 +61,7 @@ class CGDRtaProArchivosService:
                 "response_processing_id": int(file.id_rta_procesamiento),
             }
             send_message_to_sqs(queue_url, message_body, file.nombre_archivo)
+
+            self.cgd_rta_pro_archivos_repository.update_estado_to_enviado(file.id_archivo, file.nombre_archivo)
+
+        logger.debug(f"Estado actualizado a 'ENVIADO' para archivo con ID {id_archivo}")

@@ -3,6 +3,7 @@ from .archivo_repository import ArchivoRepository
 from datetime import datetime
 from sqlalchemy.orm import Session
 from src.utils.validator_utils import ArchivoValidator
+from src.config.config import env
 
 
 class RtaProcesamientoRepository:
@@ -118,6 +119,38 @@ class RtaProcesamientoRepository:
         return last_entry.tipo_respuesta if last_entry else None
 
     def get_id_rta_procesamiento(self, id_archivo: int, nombre_archivo_zip: str) -> int:
+        """
+        Obtiene el id_rta_procesamiento de la tabla CGD_RTA_PROCESAMIENTO basado en
+        el id_archivo y nombre_archivo_zip.
+
+        Returns:
+            int: El id_rta_procesamiento si se encuentra, None en caso contrario.
+        """
+
+        result = self.db.query(CGDRtaProcesamiento.id_rta_procesamiento).filter(
+            CGDRtaProcesamiento.id_archivo == id_archivo,
+            CGDRtaProcesamiento.nombre_archivo_zip == nombre_archivo_zip
+        ).first()
+
+        return result.id_rta_procesamiento if result else None
+
+    def is_estado_enviado(self, id_archivo: int, nombre_archivo_zip: str) -> bool:
+        """
+        Verifica si el estado de la respuesta de procesamiento es 'ENVIADO'.
+
+        :param id_archivo: ID del archivo.
+        :param nombre_archivo_zip: Nombre del archivo ZIP.
+        :return: True si el estado es 'ENVIADO', False en caso contrario.
+        """
+        # Obtiene la última respuesta de procesamiento
+        last_entry = self.db.query(CGDRtaProcesamiento) \
+            .filter(CGDRtaProcesamiento.id_archivo == id_archivo,
+                    CGDRtaProcesamiento.nombre_archivo_zip == nombre_archivo_zip) \
+            .order_by(CGDRtaProcesamiento.id_rta_procesamiento.desc()) \
+            .first()
+        return last_entry.estado == env.CONST_ESTADO_SEND if last_entry else False
+
+    def get_id_rta_procesamiento_by_id_archivo(self, id_archivo: int, nombre_archivo_zip: str) -> int:
         """
         Obtiene el id_rta_procesamiento de la tabla CGD_RTA_PROCESAMIENTO basado en
         el id_archivo y nombre_archivo_zip.

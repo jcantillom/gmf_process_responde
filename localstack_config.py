@@ -89,8 +89,12 @@ for folder in folders:
 sqs_client = boto3.client('sqs', endpoint_url=endpoint_url)
 
 # Crear colas en SQS
-queues = ["pro-responses-to-process", "pro-responses-to-validate", "pro-responses-to-consolidate", "emails-to-send",
-          "pro-responses-to-reception"]
+queues = [
+    "pro-responses-to-process",
+    "pro-responses-to-send",
+    "pro-responses-to-upload",
+    "pro-responses-to-consolidation",
+]
 for queue in queues:
     sqs_client.create_queue(QueueName=queue)
     print(f"Cola '{queue}' creada exitosamente en SQS.")

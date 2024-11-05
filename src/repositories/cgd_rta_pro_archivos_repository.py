@@ -27,3 +27,16 @@ class CGDRtaProArchivosRepository:
             CGDRtaProArchivos.id_archivo == id_archivo,
             CGDRtaProArchivos.estado == env.CONST_ESTADO_INIT_PENDING
         ).all()
+
+    def update_estado_to_enviado(self, id_archivo: int, nombre_archivo: str):
+        """
+        Actualiza el estado de un archivo a 'ENVIADO'.
+        """
+        archivo = self.db.query(CGDRtaProArchivos).filter(
+            CGDRtaProArchivos.id_archivo == id_archivo,
+            CGDRtaProArchivos.nombre_archivo == nombre_archivo
+        ).first()
+
+        if archivo:
+            archivo.estado = env.CONST_ESTADO_SEND
+            self.db.commit()

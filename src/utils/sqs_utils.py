@@ -49,15 +49,6 @@ def build_email_message(
 ) -> dict[str, list[Any] | str]:
     """
     Construye el mensaje de error que se enviará a la cola de correos.
-
-    Args:
-        id_plantilla (str): Identificador de la plantilla de correo.
-        error_data (Dict[str, str]): Datos del error, incluyendo código y descripción.
-        mail_parameters (List[CGDCorreosParametros]): Lista de parámetros de la plantilla.
-        filename (str): Nombre del archivo para el cual se genera el mensaje.
-
-    Returns:
-        Dict[str, Dict]: Diccionario con la estructura del mensaje de correo.
     """
     # Formato de fecha y hora actual
     fecha_formateada = datetime.now().strftime("%d/%m/%Y")
