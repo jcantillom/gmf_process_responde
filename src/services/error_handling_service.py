@@ -87,7 +87,7 @@ class ErrorHandlingService:
         message = build_email_message(id_plantilla, error_data, mail_parameters, filename)
 
         # Enviar mensaje a SQS
-        send_message_to_sqs(env.SQS_URL_EMAILS, message)
+        send_message_to_sqs(env.SQS_URL_EMAILS, message, filename)
         logger.info("Mensaje de error enviado a la cola de correos")
 
     def handle_unzip_error(

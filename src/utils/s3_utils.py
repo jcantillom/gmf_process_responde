@@ -215,6 +215,13 @@ class S3Utils:
                 extracted_files=extracted_files,
             )
 
+            # Enviar mensajes a la cola para cada archivo descomprimido
+            self.cgd_rta_pro_archivos_service.send_pending_files_to_queue_by_id(
+                id_archivo=id_archivo,
+                queue_url=env.SQS_URL_PRO_RESPONSE_TO_UPLOAD,
+                destination_folder=destination_folder,
+            )
+
         except BadZipFile:
 
             # handling error

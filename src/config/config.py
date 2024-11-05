@@ -43,6 +43,10 @@ class EnvironmentSettings(BaseSettings):
     SUFFIX_RESPONSE_DEBITO: str
     SUFFIX_RESPONSE_REINTEGROS: str
     SUFFIX_RESPONSE_ESPECIALES: str
+    SQS_URL_PRO_RESPONSE_TO_UPLOAD: str
+    CONST_ESTADO_INIT_PENDING: str
+    S3_BUCKET_NAME: str
+    SQS_URL_PRO_RESPONSE_TO_CONSOLIDATE: str
 
     class Config:
         env_file = os.path.join(os.getcwd(), ".env")

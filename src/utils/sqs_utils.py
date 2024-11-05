@@ -9,34 +9,36 @@ import json
 logger = get_logger(env.DEBUG_MODE)
 
 
-def delete_message_from_sqs(receipt_handle: str, queue_url: str):
+def delete_message_from_sqs(receipt_handle: str, queue_url: str, filename: str):
     """
     Elimina un mensaje de una cola SQS.
 
     :param receipt_handle: Identificador del mensaje a eliminar.
     :param queue_url: URL de la cola SQS.
+    :param filename: Nombre del archivo que generó el evento.
     """
     sqs = AWSClients.get_sqs_client()
     try:
         sqs.delete_message(QueueUrl=queue_url, ReceiptHandle=receipt_handle)
-        logger.info("Mensaje eliminado de SQS con éxito", extra={"event_filename": "N/A"})
+        logger.info("Mensaje eliminado de SQS con éxito", extra={"event_filename": filename})
     except Exception as e:
-        logger.error("Error al eliminar el mensaje de SQS: %s", e, extra={"event_filename": "N/A"})
+        logger.error("Error al eliminar el mensaje de SQS: %s", e, extra={"event_filename": filename})
 
 
-def send_message_to_sqs(queue_url: str, message_body: str):
+def send_message_to_sqs(queue_url: str, message_body: dict, filename: str):
     """
     Envía un mensaje a una cola SQS.
 
     :param queue_url: URL de la cola SQS.
     :param message_body: Cuerpo del mensaje a enviar.
+    :param filename: Nombre del archivo que generó el evento.
     """
     sqs = AWSClients.get_sqs_client()
     try:
         sqs.send_message(QueueUrl=queue_url, MessageBody=json.dumps(message_body, ensure_ascii=False))
-        logger.info("Mensaje enviado a SQS con éxito", extra={"event_filename": "N/A"})
+        logger.debug("Mensaje enviado a SQS con éxito", extra={"event_filename": filename})
     except Exception as e:
-        logger.error("Error al enviar mensaje a SQS: %s", e, extra={"event_filename": "N/A"})
+        logger.error("Error al enviar mensaje a SQS: %s", e, extra={"event_filename": filename})
 
 
 def build_email_message(

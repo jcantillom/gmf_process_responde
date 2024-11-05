@@ -42,8 +42,6 @@ class ArchivoValidator:
                 "02": parameter_data.get("files-reponses-reintegros", "").split(","),
                 "03": parameter_data.get("files-reponses-especiales", "").split(",")
             }
-            logger.debug(f"Cargando configuración de nombres de archivos: "
-                         f"{special_start}, {special_end}, {general_start}, {valid_file_suffixes}")
             return special_start, special_end, general_start, valid_file_suffixes
 
         except ClientError as e:
@@ -188,19 +186,15 @@ class ArchivoValidator:
         - Termina con un sufijo válido según el tipo de respuesta.
         """
         # Verificar prefijo 'RE_'
-        #TODO: el prefijo 'RE_' deberia estar en un parameter store.
+        # TODO: el prefijo 'RE_' deberia estar en un parameter store.
         if not extracted_filename.startswith("RE_"):
             logger.error(f"El archivo {extracted_filename} no comienza con 'RE_'.")
             return False
-        else:
-            logger.debug(f"El archivo {extracted_filename} comienza correctamente con 'RE_'.")
 
         # Verificar si contiene el 'acg_nombre_archivo'
         if acg_nombre_archivo not in extracted_filename:
             logger.error(f"El archivo {extracted_filename} no contiene el nombre base {acg_nombre_archivo}.")
             return False
-        else:
-            logger.debug(f"El archivo {extracted_filename} contiene el nombre base {acg_nombre_archivo}.")
 
         # Obtener el sufijo del archivo y validar contra el tipo de respuesta
         valid_suffixes = self.valid_file_suffixes.get(tipo_respuesta, [])
@@ -213,10 +207,6 @@ class ArchivoValidator:
                 f"El archivo {extracted_filename} no finaliza con un sufijo válido para tipo {tipo_respuesta}."
             )
             return False
-        else:
-            logger.debug(
-                f"El archivo {extracted_filename} finaliza con un sufijo válido para tipo {tipo_respuesta}."
-            )
 
         logger.debug(
             f"El archivo {extracted_filename} cumple con todas las validaciones de estructura para tipo {tipo_respuesta}."

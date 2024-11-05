@@ -34,7 +34,7 @@ class ArchivoService:
             if not filename or not bucket:
                 logger.error("El evento no contiene el nombre del archivo o el bucket",
                              extra={"event_filename": "No filename"})
-                delete_message_from_sqs(receipt_handle, env.SQS_URL_PRO_RESPONSE_TO_PROCESS)
+                delete_message_from_sqs(receipt_handle, env.SQS_URL_PRO_RESPONSE_TO_PROCESS, filename)
                 return
             # ==============================================================
             #          VALIDATION SI EL ARCHIVO EXISTE EN EL BUCKET
@@ -43,7 +43,7 @@ class ArchivoService:
             if not self.s3_utils.check_file_exists_in_s3(bucket, file_key):
                 logger.error("El archivo no existe en el bucket",
                              extra={"event_filename": filename})
-                delete_message_from_sqs(receipt_handle, env.SQS_URL_PRO_RESPONSE_TO_PROCESS)
+                delete_message_from_sqs(receipt_handle, env.SQS_URL_PRO_RESPONSE_TO_PROCESS, filename)
                 return
             # ==============================================================
             #            VALIDATION SI EL ARCHIVO ES ESPECIAL
@@ -181,4 +181,4 @@ class ArchivoService:
                                 error_handling_service=self.error_handling_service
                             )
 
-                            
+
