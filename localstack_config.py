@@ -51,6 +51,9 @@ for param in retries_parameters:
 # Crear parámetro específico para archivos especiales
 special_files_param_name = "/gmf/process-responses/general-config"
 special_files_param_value = json.dumps({
+    "files-reponses-debito-reverso": "TXCONCOBROGMF,TXSINCOBROGMF,REVERSOSAPLICADOS,INCONSISTENCIASPROC,CONTROLTX",
+    "files-reponses-reintegros": "NOVEDADESREIN,INCONSISTENCIASPROC,CONTROLTX",
+    "files-reponses-especiales": "NOVEDADESREIN,TITULARSUPERATOPE",
     "start-special-files": "RE_ESP_TUTGMF00010039",
     "end-special-files": "-0001",
     "start-name-files-rta": "RE_PRO_TUTGMF00010039",

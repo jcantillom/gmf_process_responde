@@ -19,6 +19,5 @@ class CorreoParametroRepository:
         parameters = self.db.query(CGDCorreosParametros).filter(
             CGDCorreosParametros.id_plantilla == id_plantilla
         ).all()
-        print(parameters)
 
         return parameters

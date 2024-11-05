@@ -40,6 +40,9 @@ class EnvironmentSettings(BaseSettings):
     CONST_ESTADO_PROCESAMIENTO_RECHAZADO: str
     CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION: str
     CONST_COD_ERROR_DECOMPRESION: str
+    SUFFIX_RESPONSE_DEBITO: str
+    SUFFIX_RESPONSE_REINTEGROS: str
+    SUFFIX_RESPONSE_ESPECIALES: str
 
     class Config:
         env_file = os.path.join(os.getcwd(), ".env")

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from src.utils.validator_utils import ArchivoValidator
 from typing import Dict
 from src.repositories.rta_procesamiento_repository import RtaProcesamientoRepository
+from src.repositories.archivo_repository import ArchivoRepository
 
 logger = get_logger(env.DEBUG_MODE)
 
@@ -19,6 +20,7 @@ class ErrorHandlingService:
         self.s3_utils = S3Utils(db)
         self.archivo_validator = ArchivoValidator()
         self.rta_procesamiento_repository = RtaProcesamientoRepository(db)
+        self.archivo_repository = ArchivoRepository(db)
 
     def handle_file_error(
             self,
@@ -93,7 +95,7 @@ class ErrorHandlingService:
             id_archivo: int,
             nombre_archivo: str,
             contador_intentos_cargue: int,
-            file_key: str,
+            original_file_key: str,
             bucket_name: str,
             receipt_handle: str):
 
@@ -124,7 +126,7 @@ class ErrorHandlingService:
         # llamamos al error_handling para enviar el mensaje de error
         self.handle_file_error(
             id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
-            filekey=file_key,
+            filekey=original_file_key,
             bucket=bucket_name,
             receipt_handle=receipt_handle,
             codigo_error=env.CONST_COD_ERROR_DECOMPRESION,
