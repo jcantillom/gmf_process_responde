@@ -46,6 +46,7 @@ class CGDArchivo(Base):
     detalle_error = Column("detalle_error", String(2000))
 
     estados = relationship("CGDArchivoEstado", back_populates="archivo")
+    catalogo_error = relationship("CGDCatalogoErrores", back_populates="archivos", lazy="joined")
 
 
     def __repr__(self):

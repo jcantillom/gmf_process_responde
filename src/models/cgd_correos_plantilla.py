@@ -1,5 +1,6 @@
 from sqlalchemy import CHAR, VARCHAR, BOOLEAN, Column, TIMESTAMP
 from src.connection.database import Base
+from sqlalchemy.orm import relationship
 
 
 class CGDCorreosPlantillas(Base):

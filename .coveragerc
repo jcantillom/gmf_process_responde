@@ -2,8 +2,29 @@
 branch = True
 source = src
 omit =
+
     */__init__.py
 
+
 [report]
+exclude_lines =
+    pragma: no cover
+    def __repr__
+    if self.debug:
+    if settings.DEBUG:
+    if __name__ == '__main__':
+
+
+
 omit =
     */__init__.py
+    */tests/*
+    */migrations/*
+    */admin.py
+    */apps.py
+
+
+[html]
+directory = htmlcov
+
+

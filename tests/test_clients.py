@@ -1,9 +1,7 @@
 import json
 import unittest
 from unittest.mock import patch, MagicMock
-
 from botocore.exceptions import ClientError
-
 from src.aws.clients import AWSClients
 
 
@@ -31,12 +29,18 @@ class TestAWSClients(unittest.TestCase):
         mock_boto_client.assert_called_once_with('sqs', region_name='us-east-1', endpoint_url='http://localhost:4566')
         self.assertEqual(client, mock_boto_client.return_value)
 
-    @patch('boto3.client')
-    @patch.dict('os.environ', {'APP_ENV': 'local'})
+    @patch('src.aws.clients.boto3.client')
     def test_get_ssm_client(self, mock_boto_client):
-        client = AWSClients.get_ssm_client()
+        # Crear un mock para el cliente de SSM
+        mock_ssm_client = "mocked_ssm_client"  # Usar un valor de retorno simulado
+        mock_boto_client.return_value = mock_ssm_client
+
+        # Llamar al método que estás probando
+        ssm_client = AWSClients.get_ssm_client()
+
+        # Comprobar que el cliente SSM se ha creado correctamente
+        self.assertEqual(ssm_client, mock_ssm_client)  # Comprobar el valor devuelto por el método
         mock_boto_client.assert_called_once_with('ssm', region_name='us-east-1', endpoint_url='http://localhost:4566')
-        self.assertEqual(client, mock_boto_client.return_value)
 
         # Test para la función get_secret
         @patch('src.aws.clients.AWSClients.get_secrets_manager_client')

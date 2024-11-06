@@ -8,7 +8,6 @@ from src.logs.logger import CustomFormatter, get_logger
 class TestLoggerCustomFormat(unittest.TestCase):
 
     def test_logger_custom_format(self):
-
         logger = get_logger(debug_mode=True)
 
         # Crea un handler y un formatter reales
@@ -109,4 +108,3 @@ class TestLogger(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
-

@@ -46,7 +46,7 @@ class ArchivoValidator:
 
         except ClientError as e:
             logger.error(f"Error al obtener el parámetro {parameter_name}: {e}")
-            return "", "", ""
+            return "", "", "", {}
 
     @staticmethod
     def is_special_prefix(filename: str) -> bool:

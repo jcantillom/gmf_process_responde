@@ -4,6 +4,7 @@ from pydantic import ValidationError
 from src.config.config import EnvironmentSettings
 
 
+
 class TestEnvironmentSettings(unittest.TestCase):
 
     @patch.dict('os.environ', {

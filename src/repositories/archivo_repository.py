@@ -65,3 +65,12 @@ class ArchivoRepository:
         ).first()
 
         return archivo is not None
+
+    def insert_archivo(self, archivo: CGDArchivo) -> None:
+        """
+        Inserta un archivo en la base de datos.
+
+        :param archivo: Instancia de CGDArchivo a insertar.
+        """
+        self.db.add(archivo)
+        self.db.commit()

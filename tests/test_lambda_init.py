@@ -1,6 +1,10 @@
 import unittest
 from unittest.mock import patch, MagicMock
 from src.config.lambda_init import initialize_lambda
+import warnings
+
+warnings.filterwarnings("ignore", category=UserWarning, module='sqlalchemy')
+
 
 
 class TestLambdaInit(unittest.TestCase):
