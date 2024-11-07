@@ -1,5 +1,8 @@
 import json
 import unittest
+from io import BytesIO
+
+from src.config.config import env
 from src.utils.event_utils import (
     extract_filename_from_body,
     extract_bucket_from_body,
@@ -11,6 +14,7 @@ from unittest.mock import patch, MagicMock, create_autospec
 from botocore.exceptions import ClientError
 from src.utils.sqs_utils import delete_message_from_sqs, send_message_to_sqs, build_email_message
 from src.utils.singleton import SingletonMeta
+from src.utils.s3_utils import S3Utils
 
 
 class Singleton(metaclass=SingletonMeta):
@@ -286,6 +290,108 @@ class TestSQSUtils(unittest.TestCase):
 
         actual_message = build_email_message(id_plantilla, error_data, mail_parameters, filename)
         self.assertEqual(actual_message, message)
+
+
+import unittest
+from unittest.mock import MagicMock, patch
+from botocore.exceptions import ClientError
+from src.utils.s3_utils import S3Utils
+from src.models.cgd_rta_procesamiento import CGDRtaProcesamiento
+from sqlalchemy.orm import Session
+
+
+class TestS3Utils(unittest.TestCase):
+    def setUp(self):
+        # Crear un mock de la sesión de la base de datos
+        self.mock_db = MagicMock(spec=Session)
+        self.s3_utils = S3Utils(db=self.mock_db)
+
+        # Mock de cliente S3
+        self.s3_utils.s3 = MagicMock()
+
+    def test_check_file_exists_in_s3_exists(self):
+        # Simular que el archivo existe en S3
+        self.s3_utils.s3.head_object.return_value = {}
+        result = self.s3_utils.check_file_exists_in_s3('test-bucket', 'test-key')
+        self.assertTrue(result)
+
+    def test_check_file_exists_in_s3_not_exists(self):
+        # Simular que el archivo no existe en S3
+        self.s3_utils.s3.head_object.side_effect = ClientError(
+            {"Error": {"Code": "404", "Message": "Not Found"}}, "HeadObject"
+        )
+        result = self.s3_utils.check_file_exists_in_s3('test-bucket', 'test-key')
+        self.assertFalse(result)
+
+    def test_move_file_to_rechazados_file_does_not_exist(self):
+        # Simular que el archivo no existe
+        self.s3_utils.check_file_exists_in_s3 = MagicMock(return_value=False)
+
+        with self.assertRaises(SystemExit):
+            self.s3_utils.move_file_to_rechazados('test-bucket', 'test-key')
+
+    def test_move_file_to_rechazados_success(self):
+        # Simular que el archivo existe
+        self.s3_utils.check_file_exists_in_s3 = MagicMock(return_value=True)
+
+        # Simular el movimiento de archivo
+        self.s3_utils.s3.copy_object.return_value = None
+        self.s3_utils.s3.delete_object.return_value = None
+
+        destination = self.s3_utils.move_file_to_rechazados('test-bucket', 'test-key')
+
+        self.assertTrue(destination.startswith(env.DIR_REJECTED_FILES))
+        self.s3_utils.s3.copy_object.assert_called_once()
+        self.s3_utils.s3.delete_object.assert_called_once()
+
+    def test_move_file_to_procesando_success(self):
+        file_name = 'test-file.txt'
+        self.s3_utils.s3.copy_object.return_value = None
+        self.s3_utils.s3.delete_object.return_value = None
+
+        destination = self.s3_utils.move_file_to_procesando('test-bucket', file_name)
+
+        self.assertTrue(destination.startswith(env.DIR_PROCESSING_FILES))
+        self.s3_utils.s3.copy_object.assert_called_once()
+        self.s3_utils.s3.delete_object.assert_called_once()
+
+    def test_unzip_file_in_s3_success(self):
+        # Simular obtener un objeto zip de S3
+        mock_zip_content = MagicMock()
+        self.s3_utils.s3.get_object.return_value = {
+            'Body': BytesIO(b'Test zip content')
+        }
+        self.s3_utils.s3.upload_fileobj = MagicMock()
+
+        # Simular que el método para obtener la cantidad de archivos esperados retorna un valor
+        self.s3_utils.get_cantidad_de_archivos_esperados_en_el_zip = MagicMock(return_value=(2, '01'))
+
+        # Simular validación
+        self.s3_utils.validator.is_valid_extracted_filename = MagicMock(return_value=True)
+
+        # Ejecutar el método
+        self.s3_utils.unzip_file_in_s3(
+            'test-bucket',
+            'test-file.zip',
+            1,
+            'test-file',
+            1,
+            'receipt_handle',
+            'error_handling_service'
+        )
+
+        # Verificaciones
+        self.s3_utils.s3.delete_object.assert_called_once_with(Bucket='test-bucket', Key='test-file.zip')
+        self.s3_utils.s3.upload_fileobj.assert_called()  # Verifica que se haya llamado al menos una vez
+
+    def test_unzip_file_in_s3_bad_zip(self):
+        self.s3_utils.s3.get_object.side_effect = ClientError(
+            {"Error": {"Code": "404", "Message": "Not Found"}}, "GetObject"
+        )
+
+        with self.assertRaises(SystemExit):
+            self.s3_utils.unzip_file_in_s3('test-bucket', 'test-file.zip', 1, 'test-file', 1, 'receipt_handle',
+                                           'error_handling_service')
 
 
 if __name__ == '__main__':

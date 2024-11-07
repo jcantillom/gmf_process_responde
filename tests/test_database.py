@@ -2,6 +2,7 @@ import os
 import unittest
 from unittest.mock import patch, MagicMock
 from dotenv import load_dotenv
+
 from src.connection.database import DataAccessLayer
 
 # Carga las variables de entorno para la prueba

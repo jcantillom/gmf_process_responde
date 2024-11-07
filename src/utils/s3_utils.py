@@ -1,4 +1,6 @@
+import sys
 from datetime import datetime
+from fileinput import filename
 from io import BytesIO
 from zipfile import ZipFile, BadZipFile
 from botocore.exceptions import ClientError
@@ -43,12 +45,16 @@ class S3Utils:
         Mueve el archivo a la carpeta 'Rechazados/AAAAMM/' dentro del mismo bucket,
         organizado por año y mes.
         """
+
         current_date = datetime.now()
         year_month_folder = current_date.strftime("%Y%m")
-        destination_key = source_key.replace(
-            env.DIR_RECEPTION_FILES,
-            f"{env.DIR_REJECTED_FILES}/{year_month_folder}"
-        ) + f"_{current_date.strftime('%Y%m%d%H%M%S')}.rechazado"
+        destination_key = f"{env.DIR_REJECTED_FILES}/{year_month_folder}/{source_key.rsplit('/', 1)[-1]}"
+
+        # Verificar si el archivo existe antes de moverlo
+        if not self.check_file_exists_in_s3(bucket_name, source_key):
+            self.logger.error(
+                f"El archivo {source_key} no existe en el bucket {bucket_name}. No se puede mover a Rechazados.")
+            sys.exit(1)
 
         try:
             self.s3.copy_object(
@@ -56,40 +62,50 @@ class S3Utils:
                 CopySource={'Bucket': bucket_name, 'Key': source_key},
                 Key=destination_key
             )
-            self.logger.info("Archivo movido a la carpeta Rechazados: %s", destination_key)
+            self.logger.debug("Archivo movido a la carpeta Rechazados: %s", destination_key)
 
             self.s3.delete_object(Bucket=bucket_name, Key=source_key)
-            self.logger.info("Archivo original eliminado: %s", source_key)
+            self.logger.debug("Archivo original eliminado: %s", source_key)
 
             return destination_key
 
         except ClientError as e:
             self.logger.error("Error al mover el archivo a Rechazados: %s", e)
 
-    def move_file_to_procesando(self, bucket_name: str, file_name) -> str:
+    def move_file_to_procesando(self, bucket_name: str, file_name: str) -> str:
         """
-        Mueve el archivo a la carpeta Recibidos a 'Procesando/' dentro del mismo bucket,
+        Mueve el archivo a la carpeta 'Procesando/YYYYMM/' dentro del mismo bucket,
         :returns: La clave de destino del archivo.
         """
         source_key = f"{env.DIR_RECEPTION_FILES}/{file_name}"
-        destination_key = f"{env.DIR_PROCESSING_FILES}/{file_name}"
+
+        # Obtener el año y mes actual para crear la ruta
+        current_date = datetime.now()
+        year_month_folder = current_date.strftime("%Y%m")
+
+        # Crear la nueva clave de destino con la carpeta de año y mes
+        destination_key = f"{env.DIR_PROCESSING_FILES}/{year_month_folder}/{file_name}"
 
         try:
+            # Copiar el archivo a la nueva ubicación
             self.s3.copy_object(
                 Bucket=bucket_name,
                 CopySource={'Bucket': bucket_name, 'Key': source_key},
                 Key=destination_key
             )
-            self.logger.info("Archivo movido a la carpeta Procesando: %s", destination_key)
+            self.logger.debug(f"Archivo movido a la carpeta Procesando: {destination_key}",
+                              extra={"event_filename": file_name})
 
             # Eliminar el archivo original de la carpeta Recibidos
             self.s3.delete_object(Bucket=bucket_name, Key=source_key)
-            self.logger.info("Archivo original eliminado: %s", source_key)
+            self.logger.debug(f"Archivo original eliminado: {source_key}",
+                              extra={"event_filename": file_name})
 
             return destination_key
 
         except ClientError as e:
             self.logger.error("Error al mover el archivo a Procesando: %s", e)
+            sys.exit(1)
 
     def unzip_file_in_s3(
             self,
@@ -115,29 +131,16 @@ class S3Utils:
         """
 
         # Obtener el tipo de respuesta del archivo.
-        tipo_respuesta = self.rta_procesamiento_repository.get_tipo_respuesta(id_archivo)
-        expected_file_count = {
-            "01": 5,
-            "02": 3,
-            "03": 2,
-        }.get(tipo_respuesta, None)
-
-        if expected_file_count is None:
-            self.logger.error(f"Tipo de respuesta no válido: {tipo_respuesta}")
-            return
-
-        original_file_key = file_key
-        file_key = file_key.replace(env.DIR_PROCESSING_FILES, env.DIR_RECEPTION_FILES)
+        expected_file_count, tipo_respuesta = (
+            self.get_cantidad_de_archivos_esperados_en_el_zip(id_archivo, nombre_archivo))
 
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
-        base_folder = original_file_key.rsplit("/", 1)[0]  # Extrae la carpeta base (Procesando/AAAA/MM)
-        zip_filename = original_file_key.rsplit("/", 1)[-1].replace('.zip', '')
+        base_folder = file_key.rsplit("/", 1)[0]
+        zip_filename = file_key.rsplit("/", 1)[-1].replace('.zip', '')
         destination_folder = f"{base_folder}/{zip_filename}_{timestamp}/"
 
         try:
-            zip_obj = self.s3.get_object(Bucket=bucket_name, Key=original_file_key)
-            self.logger.debug(f"zip_obj: {zip_obj}")
-
+            zip_obj = self.s3.get_object(Bucket=bucket_name, Key=file_key)
             with ZipFile(BytesIO(zip_obj['Body'].read())) as zip_file:
                 extracted_files = []
                 for file_info in zip_file.infolist():
@@ -145,25 +148,48 @@ class S3Utils:
                     extracted_file_key = f"{destination_folder}{file_info.filename}"
                     extracted_files.append(extracted_file_key)
 
-                    # Validar la estructura del nombre del archivo descomprimido
+                # validar si la cantidad de archivos descomprimidos es igual a la cantidad esperada
+                contador_archivos_descomprimidos = self.validar_cantidad_archivos_descomprimidos(
+                    extracted_files, expected_file_count
+                )
+
+                # si la cantidad de archivos descomprimidos no es igual a la cantidad esperada
+                if not contador_archivos_descomprimidos:
+                    # handling error
+                    error_handling_service.handle_unzip_error(
+                        id_archivo=id_archivo,
+                        filekey=file_key,
+                        bucket_name=bucket_name,
+                        receipt_handle=receipt_handle,
+                        file_name=nombre_archivo,
+                        contador_intentos_cargue=contador_intentos_cargue,
+                    )
+                    sys.exit(1)
+
+                # validar la estructura del nombre de cada archivo descomprimido
+                print("extracted_files", zip_file.infolist())
+                for file_info in zip_file.infolist():
                     is_valid = self.validator.is_valid_extracted_filename(
                         file_info.filename, tipo_respuesta, nombre_archivo
                     )
                     if not is_valid:
+                        # nombre con extensión .zip para el log.
+                        nombre_archivo_zip = nombre_archivo + ".zip"
                         self.logger.error(
-                            f"Nombre de archivo descomprimido no cumple con la estructura esperada: "
-                            f"{file_info.filename}"
-                        )
+                            f"Nombre del archivo descomprimido no cumple con la estructura esperada: ",
+                            extra={"event_filename": nombre_archivo_zip}
 
+                        )
                         # handling error
                         error_handling_service.handle_unzip_error(
                             id_archivo=id_archivo,
-                            nombre_archivo=nombre_archivo,
-                            contador_intentos_cargue=contador_intentos_cargue,
-                            original_file_key=original_file_key,
+                            filekey=file_key,
                             bucket_name=bucket_name,
                             receipt_handle=receipt_handle,
+                            file_name=nombre_archivo,
+                            contador_intentos_cargue=contador_intentos_cargue,
                         )
+                        sys.exit(1)
 
                     # Leer el contenido del archivo extraído
                     with zip_file.open(file_info) as extracted_file:
@@ -175,31 +201,13 @@ class S3Utils:
                         )
                         self.logger.debug(f"Archivo descomprimido subido: {extracted_file_key}")
 
-            # validacion de cantidad de archivos descomprimidos
-            if len(extracted_files) != expected_file_count:
-                self.logger.error(
-                    f"Error en el .zip descomprimido: {file_key}. "
-                    f"Se esperaban {expected_file_count} archivos, "
-                    f"pero se encontraron {len(extracted_files)}."
-                )
-
-                # handling error
-                error_handling_service.handle_unzip_error(
-                    id_archivo=id_archivo,
-                    nombre_archivo=nombre_archivo,
-                    contador_intentos_cargue=contador_intentos_cargue,
-                    original_file_key=original_file_key,
-                    bucket_name=bucket_name,
-                    receipt_handle=receipt_handle,
-                )
-
             # Eliminar el archivo .zip original
-            self.s3.delete_object(Bucket=bucket_name, Key=original_file_key)
-            self.logger.debug(f"Archivo .zip original eliminado: {original_file_key}")
+            self.s3.delete_object(Bucket=bucket_name, Key=file_key)
+            self.logger.debug(f"Archivo .zip original eliminado: {file_key}")
             self.logger.info(f"Descompresión completada para {file_key} en {destination_folder}")
 
             # Registrar los archivos descomprimidos en la tabla CGD_RTA_PRO_ARCHIVOS
-            zip_filename = original_file_key.rsplit("/", 1)[-1]
+            zip_filename = file_key.rsplit("/", 1)[-1]
             id_rta_procesamiento = self.rta_procesamiento_repository.get_id_rta_procesamiento(
                 id_archivo,
                 zip_filename,
@@ -223,11 +231,35 @@ class S3Utils:
             # handling error
             error_handling_service.handle_unzip_error(
                 id_archivo=id_archivo,
-                nombre_archivo=nombre_archivo,
-                contador_intentos_cargue=contador_intentos_cargue,
-                original_file_key=original_file_key,
+                filekey=file_key,
                 bucket_name=bucket_name,
                 receipt_handle=receipt_handle,
+                file_name=nombre_archivo,
+                contador_intentos_cargue=contador_intentos_cargue,
             )
+            self.logger.error("Error al descomprimir el archivo .zip", extra={"event_filename": nombre_archivo})
+            sys.exit(1)
 
-            self.logger.error(f"Error al descomprimir el archivo {file_key}: Archivo .zip inválido.")
+    def get_cantidad_de_archivos_esperados_en_el_zip(self, id_archivo, nombre_archivo):
+        tipo_respuesta = self.rta_procesamiento_repository.get_tipo_respuesta(id_archivo)
+        expected_file_count = {
+            "01": 5,
+            "02": 3,
+            "03": 2,
+        }.get(tipo_respuesta, None)
+
+        if expected_file_count is None:
+            self.logger.error(f" La cantidad de archivos esperados para el tipo de respuesta {tipo_respuesta} "
+                              f"no es válida.", extra={"event_filename": nombre_archivo})
+            sys.exit(1)
+
+        # retornar expected_file_count y tipo_respuesta
+        return expected_file_count, tipo_respuesta
+
+    def validar_cantidad_archivos_descomprimidos(self, extracted_files, expected_file_count):
+        if len(extracted_files) != expected_file_count:
+            self.logger.error(
+                f"La cantidad de archivos descomprimidos no es igual a la cantidad esperada"
+            )
+            return None
+        return extracted_files

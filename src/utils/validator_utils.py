@@ -124,7 +124,8 @@ class ArchivoValidator:
         logger.debug(f"El archivo {filename} cumple con la estructura de archivo general.")
         return True
 
-    def build_acg_nombre_archivo(self, filename: str) -> str:
+    @staticmethod
+    def build_acg_nombre_archivo(filename: str) -> str:
         """
         Construye el acg_nombre_archivo sin el prefijo ni la extensión.
         """
@@ -158,7 +159,8 @@ class ArchivoValidator:
         valid_states = self._get_valid_states()
         return state in valid_states
 
-    def is_not_processed_state(self, state: str) -> bool:
+    @staticmethod
+    def is_not_processed_state(state: str) -> bool:
         """
         Verifica si el estado del archivo no es procesado.
         """

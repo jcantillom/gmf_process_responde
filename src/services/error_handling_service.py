@@ -34,16 +34,9 @@ class ErrorHandlingService:
         Realiza el manejo completo de un error de archivo:
         - Mueve el archivo a 'rechazados'
         - Elimina el mensaje de la cola
-        - Envía un mensaje de error a la cola de SQS
-        - Registra el error en el log
-
-        Args:
-            bucket (str): Nombre del bucket de S3.
-            file_key (str): Ruta del archivo en S3.
-            receipt_handle (str): Identificador del mensaje en la cola.
-            id_plantilla (str): Identificador de la plantilla de correo.
-            codigo_error (str): Código del error.
-            filename (str): Nombre del archivo relacionado con el error.
+        - Valida que el archivo no esté en estado 'procesado'
+        - Envía un mensaje de error a la cola de SQS "emails-to-send"
+        - Registra el error en el log.
         """
         # ================================================================
         #            MOVER EL ARCHIVO A LA CARPETA DE RECHAZADOS
@@ -58,15 +51,15 @@ class ErrorHandlingService:
             receipt_handle=receipt_handle,
             filename=filename
         )
-
         # Obtener datos del error
         error = self.catalogo_error_repository.get_error_by_code(codigo_error)
         if not error:
             logger.error("Error no encontrado en el catálogo", extra={"codigo_error": codigo_error})
             return
         # ========================================================================================
-        #  ENVIAR MENSAJE DE ERROR A LA COLA DE CORREOS SQS, SI EL ARCHIVO NO HA SIDO PROCESADO
+        #    ENVIAR MENSAJE DE ERROR A LA COLA DE CORREOS SQS, A LA COLA "emails-to-send"
         # ========================================================================================
+        # Validar que el archivo no este siendo procesado.
         if not self.archivo_validator.is_not_processed_state(filename):
             logger.error("El archivo se encuentra en estado procesado",
                          extra={"filename": filename})
@@ -89,27 +82,17 @@ class ErrorHandlingService:
 
         # Enviar mensaje a SQS
         send_message_to_sqs(env.SQS_URL_EMAILS, message, filename)
-        logger.info("Mensaje de error enviado a la cola de correos")
+        logger.debug("Mensaje de error enviado a la cola de correos")
 
     def handle_unzip_error(
             self,
             id_archivo: int,
-            nombre_archivo: str,
-            contador_intentos_cargue: int,
-            original_file_key: str,
+            filekey: str,
             bucket_name: str,
-            receipt_handle: str):
-
-        """
-        Realiza el manejo completo de un error de descompresión:
-        :param id_plantilla:
-        :param filekey:
-        :param bucket:
-        :param receipt_handle:
-        :param codigo_error:
-        :param filename:
-        :return:
-        """
+            receipt_handle: str,
+            file_name: str,
+            contador_intentos_cargue: int,
+    ):
 
         # actualiza el estado de CGD_RTA_PROCESAMIENTO a RECHAZADO
         self.rta_procesamiento_repository.update_state_rta_procesamiento(
@@ -119,7 +102,7 @@ class ErrorHandlingService:
 
         # actualiza el estado del archivo a PROCESAMIENTO_RECHAZADO
         self.archivo_repository.update_estado_archivo(
-            nombre_archivo,
+            file_name,
             env.CONST_ESTADO_PROCESAMIENTO_RECHAZADO,
             contador_intentos_cargue=contador_intentos_cargue,
         )
@@ -127,9 +110,9 @@ class ErrorHandlingService:
         # llamamos al error_handling para enviar el mensaje de error
         self.handle_file_error(
             id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
-            filekey=original_file_key,
+            filekey=filekey,
             bucket=bucket_name,
             receipt_handle=receipt_handle,
             codigo_error=env.CONST_COD_ERROR_DECOMPRESION,
-            filename=nombre_archivo,
+            filename=file_name,
         )

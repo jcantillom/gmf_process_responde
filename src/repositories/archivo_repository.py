@@ -1,4 +1,4 @@
-from typing import Type, Optional
+from typing import Type, Optional, Any
 from sqlalchemy.orm import Session
 from src.models.cgd_archivo import CGDArchivo, CGDArchivoEstado
 
@@ -11,16 +11,23 @@ class ArchivoRepository:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_archivo_by_nombre_archivo(self, nombre_archivo: str) -> Optional[CGDArchivo]:
+    def get_archivo_by_nombre_archivo(self, nombre_archivo: str) -> Type[CGDArchivo]:
         """
         Obtiene un archivo por su nombre.
 
         :param nombre_archivo: Nombre del archivo a buscar.
         :return: Instancia de CGDArchivo o None si no se encuentra.
         """
-        return self.db.query(CGDArchivo).filter(
-            CGDArchivo.acg_nombre_archivo == str(nombre_archivo)
-        ).first()
+        try:
+            result = self.db.query(CGDArchivo).filter(
+                CGDArchivo.acg_nombre_archivo == str(nombre_archivo)
+            ).first()
+
+            if result:
+                return result
+        except Exception as e:
+            print(f"Error al buscar archivo por nombre: {e}")
+
 
     def check_file_exists(self, nombre_archivo: str) -> bool:
         """

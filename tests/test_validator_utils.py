@@ -63,7 +63,7 @@ class TestArchivoValidator(unittest.TestCase):
         mock_response = {
             'Parameter': {
                 'Value': json.dumps({
-                    'special_start': 'RE_ESP_TUTGMF',
+                    'special_start': 'RE_ESP',
                     'special_end': '0001',
                 })
             }
