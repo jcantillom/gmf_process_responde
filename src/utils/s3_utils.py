@@ -66,17 +66,14 @@ class S3Utils:
         except ClientError as e:
             self.logger.error("Error al mover el archivo a Rechazados: %s", e)
 
-    def move_file_to_procesando(self, bucket_name: str, source_key: str) -> str:
+    def move_file_to_procesando(self, bucket_name: str, file_name) -> str:
         """
-        Mueve el archivo a la carpeta 'Procesando/AAAAMM/' dentro del mismo bucket,
-        organizado por año y mes.
+        Mueve el archivo a la carpeta Recibidos a 'Procesando/' dentro del mismo bucket,
         :returns: La clave de destino del archivo.
         """
-        current_date = datetime.now()
-        year_month_folder = current_date.strftime("%Y%m")
-        destination_key = source_key.replace(
-            env.DIR_RECEPTION_FILES,
-            f"{env.DIR_PROCESSING_FILES}/{year_month_folder}")
+        source_key = f"{env.DIR_RECEPTION_FILES}/{file_name}"
+        destination_key = f"{env.DIR_PROCESSING_FILES}/{file_name}"
+
         try:
             self.s3.copy_object(
                 Bucket=bucket_name,
@@ -85,12 +82,11 @@ class S3Utils:
             )
             self.logger.info("Archivo movido a la carpeta Procesando: %s", destination_key)
 
+            # Eliminar el archivo original de la carpeta Recibidos
             self.s3.delete_object(Bucket=bucket_name, Key=source_key)
-            self.logger.debug("Archivo original eliminado: %s", source_key)
+            self.logger.info("Archivo original eliminado: %s", source_key)
 
             return destination_key
-
-
 
         except ClientError as e:
             self.logger.error("Error al mover el archivo a Procesando: %s", e)

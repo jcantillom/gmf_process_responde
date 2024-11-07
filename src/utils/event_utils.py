@@ -64,22 +64,14 @@ def create_file_id(filename: str) -> int:
         return int(f"{date}{componente1}{componente2}{componente3}")
 
 
-def create_filename_without_prefix_and_extension(filename: str) -> str:
+def extract_consecutivo_plataforma_origen(filename: str) -> str:
     """
-    Crea un nombre de archivo sin el prefijo y la extensión.
+    Extrae el consecutivo de la plataforma de origen del filename.
+    Ejemplo: RE_ESP_TUTGMF0001003920241002-0001.zip, me quedo con 0001
     """
-    # Remueve la extensión .zip
-    filename_without_ext = filename.rsplit(".", 1)[0]
+    # Define la expresión regular para extraer el consecutivo de la plataforma de origen
+    prefix = env.CONST_PRE_SPECIAL_FILE
+    pattern = rf'{prefix}_TUTGMF\d{{8}}\d{{8}}-(\d{{4}})\.zip$'
+    match = re.search(pattern, filename)
 
-    # Remueve el prefijo exacto, basado en el valor de la variable de entorno
-    prefix_special = env.CONST_PRE_SPECIAL_FILE
-    prefix_general = env.CONST_PRE_GENERAL_FILE
-
-    if filename_without_ext.startswith(prefix_special):
-        filename_without_prefix = filename_without_ext[len(prefix_special):].lstrip('_')
-    elif filename_without_ext.startswith(prefix_general):
-        filename_without_prefix = filename_without_ext[len(prefix_general):].lstrip('_')
-    else:
-        filename_without_prefix = filename_without_ext
-
-    return filename_without_prefix
+    return match.group(1) if match else ''

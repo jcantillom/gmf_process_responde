@@ -11,7 +11,7 @@ class CGDArchivo(Base):
     nombre_archivo = Column("nombre_archivo", String(100), nullable=False)
     plataforma_origen = Column("plataforma_origen", CHAR(2), nullable=False)
     tipo_archivo = Column("tipo_archivo", CHAR(2), nullable=False)
-    consecutivo_plataforma_origen = Column("consecutivo_plataforma_origen", SmallInteger, nullable=False)
+    consecutivo_plataforma_origen = Column("consecutivo_plataforma_origen", String(4), nullable=False)
     fecha_nombre_archivo = Column("fecha_nombre_archivo", CHAR(8), nullable=False)
     fecha_registro_resumen = Column("fecha_registro_resumen", CHAR(14))
     nro_total_registros = Column("nro_total_registros", Numeric(9))

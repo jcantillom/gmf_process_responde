@@ -48,6 +48,8 @@ class EnvironmentSettings(BaseSettings):
     S3_BUCKET_NAME: str
     SQS_URL_PRO_RESPONSE_TO_CONSOLIDATE: str
     CONST_ESTADO_SEND: str
+    CONST_TIPO_ARCHIVO_ESPECIAL: str
+    CONST_PLATAFORMA_ORIGEN: str
 
     class Config:
         env_file = ".env.testing" if "PYTEST_CURRENT_TEST" in os.environ else ".env"

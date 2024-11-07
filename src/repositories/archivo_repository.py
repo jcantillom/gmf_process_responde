@@ -51,16 +51,16 @@ class ArchivoRepository:
         archivo.contador_intentos_cargue = contador_intentos_cargue
         self.db.commit()
 
-    def check_special_file_exists(self, nombre_archivo: str, tipo_archivo: str) -> bool:
+    def check_special_file_exists(self, acg_nombre_archivo: str, tipo_archivo: str) -> bool:
         """
         Verifica si un archivo especial existe en la base de datos.
 
-        :param nombre_archivo: Nombre del archivo a buscar.
+        :param acg_nombre_archivo: Nombre del archivo a buscar.
         :param tipo_archivo: Tipo de archivo a buscar.
         :return: True si existe, False si no.
         """
         archivo = self.db.query(CGDArchivo).filter(
-            CGDArchivo.acg_nombre_archivo == str(nombre_archivo),
+            CGDArchivo.acg_nombre_archivo == str(acg_nombre_archivo),
             CGDArchivo.tipo_archivo == str(tipo_archivo)
         ).first()
 

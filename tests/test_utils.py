@@ -5,7 +5,7 @@ from src.utils.event_utils import (
     extract_bucket_from_body,
     extract_date_from_filename,
     create_file_id,
-    create_filename_without_prefix_and_extension,
+    extract_consecutivo_plataforma_origen,
 )
 from unittest.mock import patch, MagicMock, create_autospec
 from botocore.exceptions import ClientError
@@ -148,30 +148,14 @@ class TestEventUtils(unittest.TestCase):
         self.assertEqual(result, None)
 
     @patch('src.utils.event_utils.env')
-    def test_create_filename_without_prefix_and_extension_special(self, mock_env):
-        # Configurar prefijos de archivos en las variables de entorno
+    def test_extract_consecutivo_plataforma_origen(self, mock_env):
+        # Configurar el prefijo del archivo especial en la variable de entorno
         mock_env.CONST_PRE_SPECIAL_FILE = "RE_ESP"
         filename = "RE_ESP_TUTGMF0001003920241002-0001.zip"
 
-        # Ejecutar y verificar que el prefijo y la extensión se eliminan correctamente
-        result = create_filename_without_prefix_and_extension(filename)
-        self.assertEqual(result, "TUTGMF0001003920241002-0001")
-
-    @patch('src.utils.event_utils.env')
-    def test_create_filename_without_prefix_and_extension_general(self, mock_env):
-        mock_env.CONST_PRE_SPECIAL_FILE = "RE_ESP"
-        mock_env.CONST_PRE_GENERAL_FILE = "RE_GEN"
-        filename = "RE_GEN_TUTGMF0001003920241002-0001.zip"
-        result = create_filename_without_prefix_and_extension(filename)
-        self.assertEqual(result, "TUTGMF0001003920241002-0001")
-
-    def test_create_filename_without_prefix_and_extension_no_prefix(self):
-        # Caso sin prefijo especial ni general
-        filename = "TUTGMF0001003920241002-0001.zip"
-
-        # Ejecutar y verificar que solo se elimina la extensión
-        result = create_filename_without_prefix_and_extension(filename)
-        self.assertEqual(result, "TUTGMF0001003920241002-0001")
+        # Ejecutar y verificar que el consecutivo extraído es correcto
+        result = extract_consecutivo_plataforma_origen(filename)
+        self.assertEqual(result, "0001")
 
 
 class TestSingleton(unittest.TestCase):
