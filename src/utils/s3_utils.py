@@ -176,9 +176,8 @@ class S3Utils:
                         # nombre con extensión .zip para el log.
                         nombre_archivo_zip = nombre_archivo + ".zip"
                         self.logger.error(
-                            f"Nombre del archivo descomprimido no cumple con la estructura esperada: ",
+                            "Nombre del archivo descomprimido no cumple con la estructura esperada: ",
                             extra={"event_filename": nombre_archivo_zip}
-
                         )
                         # handling error
                         error_handling_service.handle_unzip_error(
@@ -259,7 +258,8 @@ class S3Utils:
     def validar_cantidad_archivos_descomprimidos(self, extracted_files, expected_file_count):
         if len(extracted_files) != expected_file_count:
             self.logger.error(
-                f"La cantidad de archivos descomprimidos no es igual a la cantidad esperada"
+                "La cantidad de archivos descomprimidos no es igual a la cantidad esperada",
+                extra={"event_filename": extracted_files}
             )
             return None
         return extracted_files

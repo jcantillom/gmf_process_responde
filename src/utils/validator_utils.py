@@ -188,7 +188,6 @@ class ArchivoValidator:
         - Termina con un sufijo válido según el tipo de respuesta.
         """
         # Verificar prefijo 'RE_'
-        # TODO: el prefijo 'RE_' deberia estar en un parameter store.
         if not extracted_filename.startswith("RE_"):
             logger.error(f"El archivo {extracted_filename} no comienza con 'RE_'.")
             return False

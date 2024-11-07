@@ -1,3 +1,5 @@
+import sys
+
 from src.models.cgd_rta_procesamiento import CGDRtaProcesamiento
 from .archivo_repository import ArchivoRepository
 from datetime import datetime
@@ -101,7 +103,7 @@ class RtaProcesamientoRepository:
             last_entry.estado = estado
             self.db.commit()
         else:
-            raise Exception(f"No se encontró respuesta de procesamiento para el archivo con ID {id_archivo}")
+            sys.exit(1)
 
     def get_tipo_respuesta(self, id_archivo: int) -> str:
         """
@@ -117,22 +119,6 @@ class RtaProcesamientoRepository:
             .first()
 
         return last_entry.tipo_respuesta if last_entry else None
-
-    def get_id_rta_procesamiento(self, id_archivo: int, nombre_archivo_zip: str) -> int:
-        """
-        Obtiene el id_rta_procesamiento de la tabla CGD_RTA_PROCESAMIENTO basado en
-        el id_archivo y nombre_archivo_zip.
-
-        Returns:
-            int: El id_rta_procesamiento si se encuentra, None en caso contrario.
-        """
-
-        result = self.db.query(CGDRtaProcesamiento.id_rta_procesamiento).filter(
-            CGDRtaProcesamiento.id_archivo == id_archivo,
-            CGDRtaProcesamiento.nombre_archivo_zip == nombre_archivo_zip
-        ).first()
-
-        return result.id_rta_procesamiento if result else None
 
     def is_estado_enviado(self, id_archivo: int, nombre_archivo_zip: str) -> bool:
         """
