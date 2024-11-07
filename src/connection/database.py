@@ -58,14 +58,14 @@ class DataAccessLayer(metaclass=SingletonMeta):
             )()
 
             # Crea las tablas en la base de datos
-            # cgd_archivo.Base.metadata.create_all(self.engine)
-            # cgd_correo_parametro.Base.metadata.create_all(self.engine)
-            # cgd_correos_plantilla.Base.metadata.create_all(self.engine)
-            # cgd_error_catalogo.Base.metadata.create_all(self.engine)
-            # cgd_rta_pro_archivos.Base.metadata.create_all(self.engine)
-            # cgd_rta_procesamiento.Base.metadata.create_all(self.engine)
-            #
-            # logger.info("Conexión a la base de datos establecida 🚀")
+            cgd_archivo.Base.metadata.create_all(self.engine)
+            cgd_correo_parametro.Base.metadata.create_all(self.engine)
+            cgd_correos_plantilla.Base.metadata.create_all(self.engine)
+            cgd_error_catalogo.Base.metadata.create_all(self.engine)
+            cgd_rta_pro_archivos.Base.metadata.create_all(self.engine)
+            cgd_rta_procesamiento.Base.metadata.create_all(self.engine)
+
+            logger.info("Conexión a la base de datos establecida 🚀")
         except Exception as e:
             logger.error("Error al establecer la conexión a la base de datos: %s", e)
             raise

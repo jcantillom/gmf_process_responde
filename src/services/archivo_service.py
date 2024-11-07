@@ -1,6 +1,4 @@
 from datetime import datetime
-from fileinput import filename
-
 from src.repositories.archivo_repository import ArchivoRepository
 from src.utils.s3_utils import S3Utils
 from src.utils.event_utils import (
