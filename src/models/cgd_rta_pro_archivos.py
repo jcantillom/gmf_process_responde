@@ -25,8 +25,6 @@ class CGDRtaProArchivos(Base):
     # Define la clave foránea compuesta
     __table_args__ = (
         ForeignKeyConstraint(['id_archivo', 'id_rta_procesamiento'],
-                             [
-                                 'cgd_rta_procesamiento.id_archivo',
-                                 'cgd_rta_procesamiento.id_rta_procesamiento',
-                             ]),
+                             ['cgd_rta_procesamiento.id_archivo',
+                              'cgd_rta_procesamiento.id_rta_procesamiento']),
     )

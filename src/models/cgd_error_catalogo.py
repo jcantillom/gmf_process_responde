@@ -13,7 +13,7 @@ class CGDCatalogoErrores(Base):
 
     # Relaciones
     rta_pro_archivos = relationship("CGDRtaProArchivos", back_populates="catalogo_errores")
-    archivos = relationship("CGDArchivo", back_populates="catalogo_error", lazy="joined")
+    archivos = relationship("CGDArchivo", back_populates="catalogo_error")
 
     def __repr__(self):
         return (f"<ErrorCatalogo(codigo_error={self.codigo_error}, "

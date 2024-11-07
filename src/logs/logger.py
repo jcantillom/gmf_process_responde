@@ -1,7 +1,6 @@
 import logging
 import os
-import pytz
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from colorama import Fore, Style
 
 # Configuración de colores para los niveles de log
@@ -15,7 +14,7 @@ LOG_COLORS = {
 
 class CustomFormatter(logging.Formatter):
     def format(self, record):
-        colombia_tz = pytz.timezone("America/Bogota")
+        colombia_tz = timezone(timedelta(hours=-5))
         record_time = datetime.now(colombia_tz).strftime("%Y-%m-%d %H:%M:%S")
         level_color = LOG_COLORS.get(record.levelname, "")
         level_name = f"{level_color}[{record.levelname}]{Style.RESET_ALL}"
