@@ -1,7 +1,6 @@
 from contextlib import contextmanager
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.orm import declarative_base
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.session import Session
 from src.aws.clients import AWSClients
@@ -9,13 +8,19 @@ from dotenv import load_dotenv
 from src.config.config import env
 from src.logs.logger import get_logger
 from src.utils.singleton import SingletonMeta
+from src.models import (
+    cgd_archivo,
+    cgd_correo_parametro,
+    cgd_correos_plantilla,
+    cgd_error_catalogo,
+    cgd_rta_pro_archivos,
+    cgd_rta_procesamiento,
+)
 
 # Carga las variables de entorno
 load_dotenv()
 
 logger = get_logger(env.DEBUG_MODE)
-
-Base = declarative_base()
 
 
 class DataAccessLayer(metaclass=SingletonMeta):
@@ -51,6 +56,14 @@ class DataAccessLayer(metaclass=SingletonMeta):
                 bind=self.engine,
                 expire_on_commit=False
             )()
+
+            # Crea las tablas en la base de datos
+            cgd_archivo.Base.metadata.create_all(self.engine)
+            cgd_correo_parametro.Base.metadata.create_all(self.engine)
+            cgd_correos_plantilla.Base.metadata.create_all(self.engine)
+            cgd_error_catalogo.Base.metadata.create_all(self.engine)
+            cgd_rta_pro_archivos.Base.metadata.create_all(self.engine)
+            cgd_rta_procesamiento.Base.metadata.create_all(self.engine)
 
             logger.info("Conexión a la base de datos establecida 🚀")
         except Exception as e:

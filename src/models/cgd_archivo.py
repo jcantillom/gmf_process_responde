@@ -1,5 +1,5 @@
-from sqlalchemy import Column, Numeric, String, CHAR, SmallInteger, Date, TIMESTAMP, DECIMAL, ForeignKey
-from src.connection.database import Base
+from sqlalchemy import Column, Numeric, String, CHAR, SmallInteger, Date, TIMESTAMP, DECIMAL, ForeignKey, BigInteger
+from .base import Base
 from datetime import datetime
 from sqlalchemy.orm import relationship
 
@@ -7,7 +7,7 @@ from sqlalchemy.orm import relationship
 class CGDArchivo(Base):
     __tablename__ = "cgd_archivos"
 
-    id_archivo = Column("id_archivo", Numeric(16), primary_key=True, nullable=False)
+    id_archivo = Column("id_archivo", BigInteger, primary_key=True, nullable=False)
     nombre_archivo = Column("nombre_archivo", String(100), nullable=False)
     plataforma_origen = Column("plataforma_origen", CHAR(2), nullable=False)
     tipo_archivo = Column("tipo_archivo", CHAR(2), nullable=False)
@@ -48,18 +48,9 @@ class CGDArchivo(Base):
     estados = relationship("CGDArchivoEstado", back_populates="archivo")
     catalogo_error = relationship("CGDCatalogoErrores", back_populates="archivos", lazy="joined")
 
-
     def __repr__(self):
         return (f"<CGDArchivo(id_archivo={self.id_archivo}, "
                 f"nombre_archivo={self.nombre_archivo}, "
-                f"plataforma_origen={self.plataforma_origen}, "
-                f"tipo_archivo={self.tipo_archivo}, "
-                f"consecutivo_plataforma_origen={self.consecutivo_plataforma_origen}, "
-                f"fecha_nombre_archivo={self.fecha_nombre_archivo}, "
-                f"fecha_registro_resumen={self.fecha_registro_resumen}, "
-                f"nro_total_registros={self.nro_total_registros}, "
-                f"nro_registros_error={self.nro_registros_error}, "
-                f"nro_registros_validos={self.nro_registros_validos}, "
                 f"estado={self.estado}, "
                 f"fecha_recepcion={self.fecha_recepcion}, "
                 f"fecha_ciclo={self.fecha_ciclo}, "
@@ -70,7 +61,7 @@ class CGDArchivo(Base):
 class CGDArchivoEstado(Base):
     __tablename__ = "cgd_archivo_estados"
 
-    id_archivo = Column("id_archivo", Numeric(16),
+    id_archivo = Column("id_archivo", BigInteger,
                         ForeignKey("cgd_archivos.id_archivo"), primary_key=True)
     estado_inicial = Column("estado_inicial", String(50))
     estado_final = Column("estado_final", String(50), primary_key=True)

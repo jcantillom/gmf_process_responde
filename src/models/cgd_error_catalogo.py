@@ -1,6 +1,6 @@
 from sqlalchemy import BOOLEAN, VARCHAR, Column
-from src.connection.database import Base
 from sqlalchemy.orm import relationship
+from .base import Base
 
 
 class CGDCatalogoErrores(Base):
