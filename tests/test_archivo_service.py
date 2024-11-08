@@ -1,3 +1,4 @@
+import json
 import unittest
 from unittest.mock import patch, MagicMock
 
@@ -8,7 +9,18 @@ from src.services.archivo_service import ArchivoService
 class TestValidateEventData(unittest.TestCase):
     def setUp(self):
         self.mock_db = MagicMock()
-        self.service = ArchivoService(self.mock_db)
+        # Mock para get_ssm_client para que devuelva un valor válido
+        with patch("src.aws.clients.AWSClients.get_s3_client"), \
+                patch("src.aws.clients.AWSClients.get_secrets_manager_client"), \
+                patch("src.aws.clients.AWSClients.get_ssm_client") as mock_ssm_client:
+            # Configurar el cliente SSM simulado
+            mock_ssm = MagicMock()
+            mock_ssm.get_parameter.return_value = {
+                'Parameter': {'Value': '{"key": "value"}'}
+            }
+            mock_ssm_client.return_value = mock_ssm
+
+            self.service = ArchivoService(self.mock_db)
 
     @patch("src.utils.sqs_utils.delete_message_from_sqs")
     @patch("src.logs.logger")
@@ -77,7 +89,22 @@ class TestValidateEventData(unittest.TestCase):
 class TestValidateFileExistenceInBucket(unittest.TestCase):
     def setUp(self):
         self.mock_db = MagicMock()
-        self.service = ArchivoService(self.mock_db)
+
+        # Mock del cliente S3 y otros servicios de AWS
+        with patch("src.aws.clients.AWSClients.get_s3_client"), \
+                patch("src.aws.clients.AWSClients.get_secrets_manager_client"), \
+                patch("src.aws.clients.AWSClients.get_ssm_client") as mock_ssm_client:
+            # Configurar el mock del cliente SSM
+            mock_ssm_instance = MagicMock()
+            mock_ssm_client.return_value = mock_ssm_instance
+            # Configura la respuesta del cliente SSM
+            mock_ssm_instance.get_parameter.return_value = {
+                'Parameter': {
+                    'Value': '{"config_key": "config_value"}'
+                }
+            }
+
+            self.service = ArchivoService(self.mock_db)
 
     @patch("src.utils.sqs_utils.delete_message_from_sqs")
     @patch("src.logs.logger")
@@ -128,12 +155,28 @@ class TestValidateFileExistenceInBucket(unittest.TestCase):
 class TestProcessSpecialFile(unittest.TestCase):
     def setUp(self):
         self.mock_db = MagicMock()
-        self.service = ArchivoService(self.mock_db)
+
+        # Moquear los clientes de AWS
+        with patch("src.aws.clients.AWSClients.get_s3_client"), \
+                patch("src.aws.clients.AWSClients.get_secrets_manager_client"), \
+                patch("src.aws.clients.AWSClients.get_ssm_client") as mock_ssm_client:
+            # Configura el mock para el cliente SSM
+            mock_ssm = MagicMock()
+            mock_ssm.get_parameter.return_value = {
+                'Parameter': {
+                    'Value': '{"config_key": "config_value"}'
+                }
+            }
+            mock_ssm_client.return_value = mock_ssm
+
+            # Inicializar el servicio con el mock
+            self.service = ArchivoService(self.mock_db)
+
+        # Moquear los métodos utilizados en ArchivoService
         self.service.archivo_repository = MagicMock()
         self.service.archivo_validator = MagicMock()
         self.service.error_handling_service = MagicMock()
 
-        # Asegúrate de "moquear" correctamente los métodos necesarios
         self.service.check_existing_special_file = MagicMock()
         self.service.validar_estado_special_file = MagicMock()
         self.service.move_file_and_update_state = MagicMock()
@@ -217,7 +260,24 @@ class TestProcessSpecialFile(unittest.TestCase):
 class TestCheckExistingSpecialFile(unittest.TestCase):
     def setUp(self):
         self.mock_db = MagicMock()
-        self.service = ArchivoService(self.mock_db)
+
+        # Moquear los clientes de AWS
+        with patch("src.aws.clients.AWSClients.get_s3_client"), \
+                patch("src.aws.clients.AWSClients.get_secrets_manager_client"), \
+                patch("src.aws.clients.AWSClients.get_ssm_client") as mock_ssm_client:
+            # Configura el mock para el cliente SSM
+            mock_ssm = MagicMock()
+            mock_ssm.get_parameter.return_value = {
+                'Parameter': {
+                    'Value': '{"config_key": "config_value"}'
+                }
+            }
+            mock_ssm_client.return_value = mock_ssm
+
+            # Inicializar el servicio con el mock
+            self.service = ArchivoService(self.mock_db)
+
+        # Moquear los métodos utilizados en ArchivoService
         self.service.archivo_repository = MagicMock()
 
     @patch("src.logs.logger")
@@ -261,7 +321,24 @@ class TestCheckExistingSpecialFile(unittest.TestCase):
 class TestValidarEstadoSpecialFile(unittest.TestCase):
     def setUp(self):
         self.mock_db = MagicMock()
-        self.service = ArchivoService(self.mock_db)
+
+        # Moquear los clientes de AWS
+        with patch("src.aws.clients.AWSClients.get_s3_client"), \
+                patch("src.aws.clients.AWSClients.get_secrets_manager_client"), \
+                patch("src.aws.clients.AWSClients.get_ssm_client") as mock_ssm_client:
+            # Configurar el mock para el cliente SSM
+            mock_ssm = MagicMock()
+            mock_ssm.get_parameter.return_value = {
+                'Parameter': {
+                    'Value': '{"config_key": "config_value"}'
+                }
+            }
+            mock_ssm_client.return_value = mock_ssm
+
+            # Inicializar el servicio con el mock de la base de datos
+            self.service = ArchivoService(self.mock_db)
+
+        # Moquear los métodos en ArchivoService
         self.service.archivo_repository = MagicMock()
         self.service.archivo_validator = MagicMock()
         self.service.error_handling_service = MagicMock()
@@ -335,7 +412,24 @@ class TestValidarEstadoSpecialFile(unittest.TestCase):
 class TestGetEstadoArchivo(unittest.TestCase):
     def setUp(self):
         self.mock_db = MagicMock()
-        self.service = ArchivoService(self.mock_db)
+
+        # Moquear los clientes de AWS
+        with patch("src.aws.clients.AWSClients.get_s3_client"), \
+                patch("src.aws.clients.AWSClients.get_secrets_manager_client"), \
+                patch("src.aws.clients.AWSClients.get_ssm_client") as mock_ssm_client:
+            # Configurar el mock para el cliente SSM
+            mock_ssm = MagicMock()
+            mock_ssm.get_parameter.return_value = {
+                'Parameter': {
+                    'Value': '{"config_key": "config_value"}'
+                }
+            }
+            mock_ssm_client.return_value = mock_ssm
+
+            # Inicializar el servicio con el mock de la base de datos
+            self.service = ArchivoService(self.mock_db)
+
+        # Moquear el archivo repository
         self.service.archivo_repository = MagicMock()
 
     @patch("src.logs.logger")
@@ -381,7 +475,25 @@ class TestGetEstadoArchivo(unittest.TestCase):
 class TestMoveFileAndUpdateState(unittest.TestCase):
     def setUp(self):
         self.mock_db = MagicMock()
-        self.service = ArchivoService(self.mock_db)
+
+        # Moquear los clientes de AWS
+        with patch("src.aws.clients.AWSClients.get_s3_client"), \
+                patch("src.aws.clients.AWSClients.get_secrets_manager_client"), \
+                patch("src.aws.clients.AWSClients.get_ssm_client") as mock_ssm_client:
+            # Configurar el mock para que devuelva un parámetro válido
+            mock_ssm_client().get_parameter.return_value = {
+                'Parameter': {
+                    'Value': json.dumps({
+                        'key1': 'value1',
+                        'key2': 'value2'
+                    })
+                }
+            }
+
+            # Inicializar el servicio
+            self.service = ArchivoService(self.mock_db)
+
+        # Moquear s3_utils y archivo_repository
         self.service.s3_utils = MagicMock()
         self.service.archivo_repository = MagicMock()
 
@@ -417,7 +529,22 @@ class TestMoveFileAndUpdateState(unittest.TestCase):
 class TestInsertFileStates(unittest.TestCase):
     def setUp(self):
         self.mock_db = MagicMock()
-        self.service = ArchivoService(self.mock_db)
+
+        # Moquear los clientes de AWS y sus respuestas
+        with patch("src.aws.clients.AWSClients.get_s3_client"), \
+                patch("src.aws.clients.AWSClients.get_secrets_manager_client"), \
+                patch("src.aws.clients.AWSClients.get_ssm_client") as mock_ssm_client:
+            # Configurar el mock para que devuelva un parámetro válido
+            mock_ssm_client().get_parameter.return_value = {
+                'Parameter': {
+                    'Value': '{"key1": "value1", "key2": "value2"}'
+                }
+            }
+
+            # Inicializar el servicio
+            self.service = ArchivoService(self.mock_db)
+
+        # Moquear los repositorios y validadores
         self.service.archivo_repository = MagicMock()
         self.service.estado_archivo_repository = MagicMock()
         self.service.rta_procesamiento_repository = MagicMock()
@@ -469,8 +596,19 @@ class TestInsertFileStates(unittest.TestCase):
 
 
 class TestUnzipFile(unittest.TestCase):
-    def setUp(self):
+    @patch("src.aws.clients.AWSClients.get_ssm_client")
+    def setUp(self, mock_ssm_client):
         self.mock_db = MagicMock()
+
+        # Configurar el cliente SSM mockeado para devolver una respuesta válida
+        mock_ssm_client_instance = mock_ssm_client.return_value
+        mock_ssm_client_instance.get_parameter.return_value = {
+            'Parameter': {
+                'Value': '{"CONFIG_NAME": "some_value"}'
+            }
+        }
+
+        # Inicializar el servicio ArchivoService con el cliente mockeado
         self.service = ArchivoService(self.mock_db)
         self.service.s3_utils = MagicMock()
 
@@ -515,7 +653,16 @@ class TestUnzipFile(unittest.TestCase):
 
 
 class TestProcessSqsResponse(unittest.TestCase):
-    def setUp(self):
+    @patch("src.aws.clients.AWSClients.get_ssm_client")
+    def setUp(self, mock_ssm_client):
+        # Configurar el cliente SSM simulado para devolver una respuesta válida
+        mock_ssm_client_instance = mock_ssm_client.return_value
+        mock_ssm_client_instance.get_parameter.return_value = {
+            'Parameter': {
+                'Value': '{"CONFIG_NAME": "some_value"}'
+            }
+        }
+
         self.mock_db = MagicMock()
         self.service = ArchivoService(self.mock_db)
         self.service.rta_procesamiento_repository = MagicMock()
@@ -564,7 +711,16 @@ class TestProcessSqsResponse(unittest.TestCase):
 
 
 class TestHandleInvalidSpecialFile(unittest.TestCase):
-    def setUp(self):
+    @patch("src.aws.clients.AWSClients.get_ssm_client")
+    def setUp(self, mock_ssm_client):
+        # Configurar el cliente SSM simulado para devolver una respuesta válida
+        mock_ssm_client_instance = mock_ssm_client.return_value
+        mock_ssm_client_instance.get_parameter.return_value = {
+            'Parameter': {
+                'Value': '{"CONFIG_NAME": "some_value"}'
+            }
+        }
+
         self.mock_db = MagicMock()
         self.service = ArchivoService(self.mock_db)
         self.service.error_handling_service = MagicMock()
@@ -595,7 +751,16 @@ class TestHandleInvalidSpecialFile(unittest.TestCase):
 
 
 class TestProcessGeneralFile(unittest.TestCase):
-    def setUp(self):
+    @patch("src.aws.clients.AWSClients.get_ssm_client")
+    def setUp(self, mock_ssm_client):
+        # Configurar el cliente SSM simulado para devolver una respuesta válida
+        mock_ssm_client_instance = mock_ssm_client.return_value
+        mock_ssm_client_instance.get_parameter.return_value = {
+            'Parameter': {
+                'Value': '{"CONFIG_NAME": "some_value"}'
+            }
+        }
+
         self.mock_db = MagicMock()
         self.service = ArchivoService(self.mock_db)
         self.service.archivo_repository = MagicMock()
@@ -688,7 +853,16 @@ class TestProcessGeneralFile(unittest.TestCase):
 
 
 class TestValidarYProcesarArchivo(unittest.TestCase):
-    def setUp(self):
+    @patch("src.aws.clients.AWSClients.get_ssm_client")
+    def setUp(self, mock_ssm_client):
+        # Configurar el cliente SSM simulado
+        mock_ssm_instance = mock_ssm_client.return_value
+        mock_ssm_instance.get_parameter.return_value = {
+            'Parameter': {
+                'Value': '{"CONFIG_NAME": "some_value"}'
+            }
+        }
+
         self.mock_db = MagicMock()
         self.service = ArchivoService(self.mock_db)
         self.service.archivo_validator = MagicMock()
@@ -733,7 +907,6 @@ class TestValidarYProcesarArchivo(unittest.TestCase):
         self.service.validate_file_existence_in_bucket.assert_called_once_with("file.txt", "test_bucket",
                                                                                "receipt_handle")
 
-
     @patch("src.services.archivo_service.ArchivoService.extract_event_details")
     @patch("src.logs.logger")
     def test_archivo_especial(self, mock_logger, mock_extract_event_details):
@@ -750,7 +923,6 @@ class TestValidarYProcesarArchivo(unittest.TestCase):
 
         # Llamar a la función
         self.service.validar_y_procesar_archivo(event)
-
 
     @patch("src.services.archivo_service.ArchivoService.extract_event_details")
     @patch("src.logs.logger")
@@ -769,4 +941,4 @@ class TestValidarYProcesarArchivo(unittest.TestCase):
         # Llamar a la función
         self.service.validar_y_procesar_archivo(event)
 
-
+#
