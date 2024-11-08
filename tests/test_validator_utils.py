@@ -10,8 +10,22 @@ import os
 
 
 class TestArchivoValidator(unittest.TestCase):
+    @patch('src.aws.clients.AWSClients.get_ssm_client')
+    def setUp(self, mock_get_ssm_client):
+        mock_ssm_client = MagicMock()
+        mock_get_ssm_client.return_value = mock_ssm_client
 
-    def setUp(self):
+        # Configura el retorno del método get_parameter en el cliente simulado
+        mock_ssm_client.get_parameter.return_value = {
+            'Parameter': {
+                'Value': '{"special_start": "RE_ESP",'
+                         ' "special_end": "0001", '
+                         '"general_start": "RE_GEN", '
+                         '"files-reponses-debito-reverso": "001,002", '
+                         '"files-reponses-reintegros": "R", '
+                         '"files-reponses-especiales": "ESP"}'
+            }
+        }
         # Crear una instancia del validador
         self.validator = ArchivoValidator()
         self.validator.valid_file_suffixes = {
@@ -24,6 +38,25 @@ class TestArchivoValidator(unittest.TestCase):
         self.validator.general_start = env.CONST_PRE_GENERAL_FILE
         self.validator.special_start = env.CONST_PRE_SPECIAL_FILE
 
+    def test_is_special_file_valid(self):
+        # Test para un archivo que cumple con las condiciones de un archivo especial
+        filename = "RE_ESP20220101-0001"
+        self.assertTrue(self.validator.is_special_file(filename))
+
+    def test_is_special_file_invalid(self):
+        # Test para un archivo que no cumple con las condiciones de un archivo especial
+        filename = "RE_GEN20220101-0001"
+        self.assertFalse(self.validator.is_special_file(filename))
+
+    def test_is_general_file_valid(self):
+        # Test para un archivo que cumple con las condiciones de un archivo general
+        filename = "RE_GEN20220101-0001"
+        self.assertTrue(self.validator.is_general_file(filename))
+
+    def test_is_general_file_invalid(self):
+        # Test para un archivo que no cumple con las condiciones de un archivo general
+        filename = "RE_ESP20220101-0001"
+        self.assertFalse(self.validator.is_general_file(filename))
 
     @patch('src.aws.clients.AWSClients.get_ssm_client')  # Asegúrate de que esta ruta sea correcta
     def test_get_file_config_name_success(self, mock_get_ssm_client):
@@ -305,7 +338,6 @@ class TestArchivoValidator(unittest.TestCase):
         result = ArchivoValidator.build_acg_nombre_archivo(filename)
         self.assertTrue(result)
 
-
     def test_build_acg_nombre_archivo_no_extension(self):
         """
         Prueba para un archivo sin extensión.
@@ -384,7 +416,6 @@ class TestArchivoValidator(unittest.TestCase):
 
         result = self.validator.is_special_file(filename)
 
-
     @patch('src.utils.validator_utils.ArchivoValidator.is_valid_date_in_filename')
     def test_is_special_file_invalid_date(self, mock_is_valid_date):
         """
@@ -394,7 +425,6 @@ class TestArchivoValidator(unittest.TestCase):
         mock_is_valid_date.return_value = False  # Simula que la fecha es mayor a la actual
 
         result = self.validator.is_special_file(filename)
-
 
     def test_is_special_file_invalid_format(self):
         """
@@ -413,7 +443,6 @@ class TestArchivoValidator(unittest.TestCase):
         mock_is_valid_date.return_value = True  # Simula que la fecha es válida
 
         result = self.validator.is_special_file(filename)
-
 
     @patch('src.utils.validator_utils.ArchivoValidator.is_valid_date_in_filename')
     def test_is_special_file_invalid_date_format(self, mock_is_valid_date):

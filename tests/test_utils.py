@@ -298,21 +298,39 @@ class TestSQSUtils(unittest.TestCase):
 
 
 class TestS3Utils(unittest.TestCase):
+    @patch('boto3.client')
+    @patch('src.aws.clients.AWSClients.get_ssm_client')
+    @patch('src.aws.clients.AWSClients.get_s3_client')
+    def setUp(self, mock_get_s3_client, mock_get_ssm_client, mock_boto_client):
+        # Crear mocks para los clientes
+        mock_ssm_client = MagicMock()
+        mock_s3_client = MagicMock()
 
-    def setUp(self):
+        # Configurar los retornos de los mocks
+        mock_get_ssm_client.return_value = mock_ssm_client
+        mock_get_s3_client.return_value = mock_s3_client
+
+        mock_ssm_client.get_parameter.return_value = {
+            'Parameter': {
+                'Value': '{"special_start": "RE_ESP",'
+                         ' "special_end": "0001", '
+                         '"general_start": "RE_GEN", '
+                         '"files-reponses-debito-reverso": "001,002", '
+                         '"files-reponses-reintegros": "R", '
+                         '"files-reponses-especiales": "ESP"}'
+            }
+        }
+
         # Crear instancias mock para S3 y el servicio de manejo de errores
         self.s3_utils = S3Utils(MagicMock())
         self.error_handling_service = MagicMock(spec=ErrorHandlingService)
-        self.mock_db = MagicMock(spec=Session)
 
-        # Mockear los métodos de S3
-        self.s3_utils.s3 = MagicMock()
-        self.s3_utils.s3.head_object = MagicMock()
-        self.s3_utils.s3.copy_object = MagicMock()
+        # Mockear métodos de S3
+        self.s3_utils.s3 = mock_s3_client
+        self.s3_utils.s3.get_object = MagicMock()
+        self.s3_utils.s3.upload_fileobj = MagicMock()
         self.s3_utils.s3.delete_object = MagicMock()
-
-        # Mockear la cantidad esperada de archivos
-        self.s3_utils.get_cantidad_de_archivos_esperados_en_el_zip = MagicMock(return_value=(2, '01'))
+        self.s3_utils.s3.copy_object = MagicMock()
 
         # Crear un archivo zip válido en memoria para las pruebas
         self.mock_zip_content = BytesIO()
@@ -321,10 +339,12 @@ class TestS3Utils(unittest.TestCase):
             zip_file.writestr('file2-01.txt', 'Contenido del archivo 2')
         self.mock_zip_content.seek(0)
 
-        # Mockear el cliente S3 para devolver un archivo zip
-        self.s3_utils.s3.get_object = MagicMock(return_value={'Body': self.mock_zip_content})
-        self.s3_utils.s3.upload_fileobj = MagicMock()
-        self.s3_utils.s3.delete_object = MagicMock()
+        # Mockear el retorno de get_object
+        self.s3_utils.s3.get_object.return_value = {'Body': self.mock_zip_content}
+
+        # Mockear la cantidad esperada de archivos
+        self.s3_utils.get_cantidad_de_archivos_esperados_en_el_zip = MagicMock(return_value=(2, '01'))
+
 
     def test_check_file_exists_in_s3_exists(self):
         # Simular que el archivo existe en S3
@@ -344,16 +364,30 @@ class TestS3Utils(unittest.TestCase):
         # Simular que el archivo existe
         self.s3_utils.check_file_exists_in_s3 = MagicMock(return_value=True)
 
+        # Resetear los mocks para asegurarse de que no hay llamadas previas
+        self.s3_utils.s3.copy_object.reset_mock()
+        self.s3_utils.s3.delete_object.reset_mock()
+
         # Simular el movimiento de archivo
         self.s3_utils.s3.copy_object.return_value = None
         self.s3_utils.s3.delete_object.return_value = None
 
+        # Llamar a la función que se está probando
         destination = self.s3_utils.move_file_to_rechazados('test-bucket', 'test-key')
 
         # Verificar la ruta destino y la llamada a S3
         self.assertTrue(destination.startswith(env.DIR_REJECTED_FILES))
-        self.s3_utils.s3.copy_object.assert_called_once()
-        self.s3_utils.s3.delete_object.assert_called_once()
+
+        # Verificar que solo se llamó una vez a copy_object y delete_object
+        self.s3_utils.s3.copy_object.assert_called_once_with(
+            Bucket='test-bucket',
+            CopySource={'Bucket': 'test-bucket', 'Key': 'test-key'},
+            Key=f"{env.DIR_REJECTED_FILES}/202411/test-key"
+        )
+        self.s3_utils.s3.delete_object.assert_called_once_with(
+            Bucket='test-bucket',
+            Key='test-key'
+        )
 
     def test_move_file_to_procesando_success(self):
         file_name = 'test-file.txt'
@@ -369,9 +403,28 @@ class TestS3Utils(unittest.TestCase):
 
 
 class TestS3UtilsZip(unittest.TestCase):
+    @patch('boto3.client')
+    @patch('src.aws.clients.AWSClients.get_ssm_client')
+    @patch('src.aws.clients.AWSClients.get_s3_client')
+    def setUp(self, mock_boto_client, mock_get_ssm_client, mock_get_s3_client):
+        # Configurar el mock para el cliente S3 y SSM
+        mock_ssm_client = MagicMock()
+        mock_s3_client = MagicMock()
 
-    def setUp(self):
-        # Crear una instancia mock de S3Utils y ErrorHandlingService
+        mock_get_ssm_client.return_value = mock_ssm_client
+        mock_get_s3_client.return_value = mock_s3_client
+
+        mock_ssm_client.get_parameter.return_value = {
+            'Parameter': {
+                'Value': '{"special_start": "RE_ESP",'
+                         ' "special_end": "0001", '
+                         '"general_start": "RE_GEN", '
+                         '"files-reponses-debito-reverso": "001,002", '
+                         '"files-reponses-reintegros": "R", '
+                         '"files-reponses-especiales": "ESP"}'
+            }
+        }
+
         self.s3_utils = S3Utils(MagicMock())
         self.error_handling_service = MagicMock(spec=ErrorHandlingService)
 
@@ -412,6 +465,7 @@ class TestS3UtilsZip(unittest.TestCase):
         # Verificar que se subieron los archivos extraídos a S3
         self.s3_utils.s3.upload_fileobj.assert_called()
         self.s3_utils.s3.delete_object.assert_called_once_with(Bucket='test-bucket', Key='test-file.zip')
+
     #
     def test_unzip_file_in_s3_bad_zip(self):
         # Configurar el mock para lanzar un error de archivo inválido
@@ -431,7 +485,6 @@ class TestS3UtilsZip(unittest.TestCase):
         # Verificar que se manejó el error adecuadamente
         self.error_handling_service.handle_unzip_error.assert_called_once()
 
-
     def test_unzip_file_in_s3_invalid_filename_structure(self):
         # Configurar el mock para devolver un archivo zip válido con nombres incorrectos
         self.s3_utils.s3.get_object.return_value = {'Body': self.mock_zip_content}
@@ -447,7 +500,6 @@ class TestS3UtilsZip(unittest.TestCase):
             'receipt_handle',
             self.error_handling_service
         )
-
 
     def test_unzip_file_in_s3_unexpected_file_count(self):
         # Configurar el mock para devolver un archivo zip con un número inesperado de archivos

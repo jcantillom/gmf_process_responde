@@ -9,12 +9,26 @@ from src.models.cgd_rta_pro_archivos import CGDRtaProArchivos
 
 
 class TestErrorHandlingService(unittest.TestCase):
-
-    def setUp(self):
+    @patch('src.aws.clients.AWSClients.get_ssm_client')
+    def setUp(self, mock_get_ssm_client):
         # Mock de la base de datos
+
+
+        mock_ssm_client = MagicMock()
+        mock_get_ssm_client.return_value = mock_ssm_client
+
+        mock_ssm_client.get_parameter.return_value = {
+            'Parameter': {
+                'Value': '{"special_start": "RE_ESP",'
+                         ' "special_end": "0001", '
+                         '"general_start": "RE_GEN", '
+                         '"files-reponses-debito-reverso": "001,002", '
+                         '"files-reponses-reintegros": "R", '
+                         '"files-reponses-especiales": "ESP"}'
+            }
+        }
         self.mock_db = MagicMock(spec=Session)
         self.service = ErrorHandlingService(self.mock_db)
-
         # Mock de los repositorios y utilidades
         self.service.catalogo_error_repository.get_error_by_code = MagicMock()
         self.service.correo_parametro_repository.get_parameters_by_template = MagicMock()
