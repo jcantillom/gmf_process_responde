@@ -9,7 +9,7 @@ class CGDRtaProArchivos(Base):
     __tablename__ = "cgd_rta_pro_archivos"
 
     id_archivo = Column(BigInteger, primary_key=True, nullable=False)
-    id_rta_procesamiento = Column(Integer, primary_key=True, nullable=False)
+    id_rta_procesamiento = Column(Integer, primary_key=True)
     nombre_archivo = Column(VARCHAR(100), primary_key=True, nullable=False)
     tipo_archivo_rta = Column(VARCHAR(30), nullable=False)
     estado = Column(VARCHAR(30), nullable=False)

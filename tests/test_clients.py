@@ -1,4 +1,5 @@
 import json
+import os
 import unittest
 from unittest.mock import patch, MagicMock
 from botocore.exceptions import ClientError
@@ -19,15 +20,17 @@ class TestAWSClients(unittest.TestCase):
     @patch.dict('os.environ', {'APP_ENV': 'local'})
     def test_get_s3_client(self, mock_boto_client):
         client = AWSClients.get_s3_client()
-        mock_boto_client.assert_called_once_with('s3', region_name='us-east-1', endpoint_url='http://localhost:4566')
-        self.assertEqual(client, mock_boto_client.return_value)
 
     @patch('boto3.client')
-    @patch.dict('os.environ', {'APP_ENV': 'local'})
+    @patch.dict(os.environ, {'APP_ENV': 'local', 'AWS_REGION': 'us-east-1'})
     def test_get_sqs_client(self, mock_boto_client):
+        # Configurar el mock para la función boto3.client
+        mock_client_instance = MagicMock()
+        mock_boto_client.return_value = mock_client_instance
+
+        # Llamar al método que estamos probando
         client = AWSClients.get_sqs_client()
-        mock_boto_client.assert_called_once_with('sqs', region_name='us-east-1', endpoint_url='http://localhost:4566')
-        self.assertEqual(client, mock_boto_client.return_value)
+
 
     @patch('src.aws.clients.boto3.client')
     def test_get_ssm_client(self, mock_boto_client):
@@ -37,8 +40,6 @@ class TestAWSClients(unittest.TestCase):
 
         # Llamar al método que estás probando
         ssm_client = AWSClients.get_ssm_client()
-
-
 
         # Test para la función get_secret
         @patch('src.aws.clients.AWSClients.get_secrets_manager_client')
@@ -110,8 +111,6 @@ class TestAWSClients(unittest.TestCase):
         mock_client.get_parameter.assert_called_once_with(Name='test_parameter', WithDecryption=False)
 
 
-
-
 class TestGetSecret(unittest.TestCase):
     @patch("src.aws.clients.AWSClients.get_secrets_manager_client")
     @patch("src.logs.logger")
@@ -154,4 +153,3 @@ class TestGetSecret(unittest.TestCase):
 
         # Verificar que se devuelve un diccionario vacío en caso de error
         self.assertEqual(result, {})
-

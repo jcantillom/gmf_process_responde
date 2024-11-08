@@ -164,10 +164,8 @@ class S3Utils:
                         file_name=nombre_archivo,
                         contador_intentos_cargue=contador_intentos_cargue,
                     )
-                    sys.exit(1)
 
                 # validar la estructura del nombre de cada archivo descomprimido
-                print("extracted_files", zip_file.infolist())
                 for file_info in zip_file.infolist():
                     is_valid = self.validator.is_valid_extracted_filename(
                         file_info.filename, tipo_respuesta, nombre_archivo
@@ -188,7 +186,6 @@ class S3Utils:
                             file_name=nombre_archivo,
                             contador_intentos_cargue=contador_intentos_cargue,
                         )
-                        sys.exit(1)
 
                     # Leer el contenido del archivo extraído
                     with zip_file.open(file_info) as extracted_file:
@@ -237,7 +234,7 @@ class S3Utils:
                 contador_intentos_cargue=contador_intentos_cargue,
             )
             self.logger.error("Error al descomprimir el archivo .zip", extra={"event_filename": nombre_archivo})
-            sys.exit(1)
+            return
 
     def get_cantidad_de_archivos_esperados_en_el_zip(self, id_archivo, nombre_archivo):
         tipo_respuesta = self.rta_procesamiento_repository.get_tipo_respuesta(id_archivo)

@@ -103,7 +103,7 @@ class RtaProcesamientoRepository:
             last_entry.estado = estado
             self.db.commit()
         else:
-            sys.exit(1)
+            raise Exception("No se encontró la respuesta de procesamiento")
 
     def get_tipo_respuesta(self, id_archivo: int) -> str:
         """
