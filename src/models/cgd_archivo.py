@@ -46,16 +46,17 @@ class CGDArchivo(Base):
     detalle_error = Column("detalle_error", String(2000))
 
     estados = relationship("CGDArchivoEstado", back_populates="archivo")
-    catalogo_error = relationship("CGDCatalogoErrores", back_populates="archivos", lazy="joined")
+    catalogo_error = relationship("CGDCatalogoErrores", back_populates="archivos")
 
-    def __repr__(self):
-        return (f"<CGDArchivo(id_archivo={self.id_archivo}, "
-                f"nombre_archivo={self.nombre_archivo}, "
-                f"estado={self.estado}, "
-                f"fecha_recepcion={self.fecha_recepcion}, "
-                f"fecha_ciclo={self.fecha_ciclo}, "
-                f"contador_intentos_cargue={self.contador_intentos_cargue}, "
-                )
+
+def __repr__(self):
+    return (f"<CGDArchivo(id_archivo={self.id_archivo}, "
+            f"nombre_archivo={self.nombre_archivo}, "
+            f"estado={self.estado}, "
+            f"fecha_recepcion={self.fecha_recepcion}, "
+            f"fecha_ciclo={self.fecha_ciclo}, "
+            f"contador_intentos_cargue={self.contador_intentos_cargue}, "
+            )
 
 
 class CGDArchivoEstado(Base):

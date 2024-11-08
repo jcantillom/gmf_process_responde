@@ -129,12 +129,18 @@ class ArchivoValidator:
         """
         Construye el acg_nombre_archivo sin el prefijo ni la extensión.
         """
-        # Remueve el prefijo y la extensión .zip
+        # Remueve la extensión .zip
         filename_without_ext = filename.rsplit(".", 1)[0]
 
-        if (filename_without_ext.startswith(env.CONST_PRE_SPECIAL_FILE) or
-                filename_without_ext.startswith(env.CONST_PRE_GENERAL_FILE)):
-            return filename_without_ext[7:]
+        # Verificar si el archivo tiene el prefijo especial
+        if filename_without_ext.startswith(env.CONST_PRE_SPECIAL_FILE):
+            return filename_without_ext[len(env.CONST_PRE_SPECIAL_FILE):]
+
+        # Verificar si el archivo tiene el prefijo general
+        if filename_without_ext.startswith(env.CONST_PRE_GENERAL_FILE):
+            return filename_without_ext[len(env.CONST_PRE_GENERAL_FILE):]
+
+        return filename_without_ext
 
     def _get_valid_states(self) -> list[str]:
         """

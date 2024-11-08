@@ -6,7 +6,6 @@ from src.logs.logger import get_logger
 from src.config.config import env
 from sqlalchemy.orm import Session
 from src.utils.validator_utils import ArchivoValidator
-from typing import Dict
 from src.repositories.rta_procesamiento_repository import RtaProcesamientoRepository
 from src.repositories.archivo_repository import ArchivoRepository
 

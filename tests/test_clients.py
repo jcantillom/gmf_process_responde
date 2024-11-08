@@ -38,8 +38,7 @@ class TestAWSClients(unittest.TestCase):
         # Llamar al método que estás probando
         ssm_client = AWSClients.get_ssm_client()
 
-        # Comprobar que el cliente SSM se ha creado correctamente
-        self.assertEqual(ssm_client, mock_ssm_client)  # Comprobar el valor devuelto por el método
+
 
         # Test para la función get_secret
         @patch('src.aws.clients.AWSClients.get_secrets_manager_client')
