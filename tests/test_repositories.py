@@ -1,12 +1,7 @@
 import unittest
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
-
-from src.aws.clients import AWSClients
 from src.config.config import env
 from src.models.cgd_archivo import CGDArchivoEstado, CGDArchivo
 from src.models.cgd_error_catalogo import CGDCatalogoErrores
-from src.models.cgd_correos_plantilla import CGDCorreosPlantillas
 from src.models.cgd_correo_parametro import CGDCorreosParametros
 from src.models.base import Base
 from src.models.cgd_rta_pro_archivos import CGDRtaProArchivos

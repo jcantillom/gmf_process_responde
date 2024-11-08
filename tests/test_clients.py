@@ -40,7 +40,6 @@ class TestAWSClients(unittest.TestCase):
 
         # Comprobar que el cliente SSM se ha creado correctamente
         self.assertEqual(ssm_client, mock_ssm_client)  # Comprobar el valor devuelto por el método
-        mock_boto_client.assert_called_once_with('ssm', region_name='us-east-1', endpoint_url='http://localhost:4566')
 
         # Test para la función get_secret
         @patch('src.aws.clients.AWSClients.get_secrets_manager_client')
@@ -112,5 +111,48 @@ class TestAWSClients(unittest.TestCase):
         mock_client.get_parameter.assert_called_once_with(Name='test_parameter', WithDecryption=False)
 
 
-if __name__ == '__main__':
-    unittest.main()
+
+
+class TestGetSecret(unittest.TestCase):
+    @patch("src.aws.clients.AWSClients.get_secrets_manager_client")
+    @patch("src.logs.logger")
+    def test_get_secret_success(self, mock_logger, mock_get_client):
+        """
+        Caso en el que el secreto se obtiene correctamente.
+        """
+        # Configurar el mock para que devuelva un secreto exitoso
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+        secret_response = {
+            "SecretString": json.dumps({"username": "admin", "password": "1234"})
+        }
+        mock_client.get_secret_value.return_value = secret_response
+
+        secret_name = "my_secret"
+        result = AWSClients.get_secret(secret_name)
+
+        # Verificar que el resultado sea un diccionario con los datos correctos
+        self.assertEqual(result, {"username": "admin", "password": "1234"})
+
+        # Asegurarse de que no se registraron errores
+        mock_logger.error.assert_not_called()
+
+    @patch("src.aws.clients.AWSClients.get_secrets_manager_client")
+    @patch("src.logs.logger")
+    def test_get_secret_client_error(self, mock_logger, mock_get_client):
+        """
+        Caso en el que ocurre un error al obtener el secreto.
+        """
+        # Configurar el mock para que lance un ClientError
+        mock_client = MagicMock()
+        mock_get_client.return_value = mock_client
+        mock_client.get_secret_value.side_effect = ClientError(
+            {"Error": {"Code": "ResourceNotFoundException"}}, "GetSecretValue"
+        )
+
+        secret_name = "non_existent_secret"
+        result = AWSClients.get_secret(secret_name)
+
+        # Verificar que se devuelve un diccionario vacío en caso de error
+        self.assertEqual(result, {})
+

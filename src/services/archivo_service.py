@@ -17,6 +17,7 @@ from .error_handling_service import ErrorHandlingService
 from src.repositories.archivo_estado_repository import ArchivoEstadoRepository
 from src.repositories.rta_procesamiento_repository import RtaProcesamientoRepository
 from ..models.cgd_archivo import CGDArchivo
+import sys
 
 logger = get_logger(env.DEBUG_MODE)
 
@@ -128,7 +129,7 @@ class ArchivoService:
         else:
             self.handle_invalid_special_file(file_name, bucket, receipt_handle)
 
-    def check_existing_special_file(self, acg_nombre_archivo):
+    def check_existing_special_file(self, acg_nombre_archivo) -> bool:
         """Valida si el archivo especial existe en la base de datos."""
         exists = self.archivo_repository.check_special_file_exists(
             acg_nombre_archivo, env.CONST_TIPO_ARCHIVO_ESPECIAL
