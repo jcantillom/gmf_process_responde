@@ -1,5 +1,8 @@
 import json
 import os
+import re
+
+from src.config.config import env
 
 
 def extract_filename_from_body(body: str) -> str:
@@ -19,3 +22,56 @@ def extract_bucket_from_body(body: str) -> str:
     event_data = json.loads(body)
     bucket_name = event_data["Records"][0]["s3"]["bucket"]["name"]
     return bucket_name
+
+
+def extract_date_from_filename(filename: str) -> str:
+    """
+    Extrae la fecha en formato 'YYYYMMDD' de un nombre de archivo específico.
+
+    Args:
+        filename (str): El nombre del archivo del cual extraer la fecha.
+
+    Returns:
+        str: La fecha extraída en formato 'YYYYMMDD', o una cadena vacía si no se encuentra.
+    """
+    # Define la expresión regular para extraer la fecha
+    prefix = env.CONST_PRE_SPECIAL_FILE
+    pattern = rf'{prefix}_TUTGMF\d{{8}}(\d{{8}})-\d{{4}}\.zip$'
+    match = re.search(pattern, filename)
+
+    if match:
+        # Devuelve la fecha extraída
+        return match.group(1)
+
+    # Si no se encuentra coincidencia, devuelve una cadena vacía
+    return ''
+
+
+def create_file_id(filename: str) -> int:
+    """
+    Crea un identificador único para un archivo.
+
+    Returns:
+        str: Un identificador único para un archivo.
+    """
+    date = extract_date_from_filename(filename)
+
+    if date:
+        componente1 = "01"
+        componente2 = "05"
+        componente3 = "0001"
+
+        return int(f"{date}{componente1}{componente2}{componente3}")
+
+
+def extract_consecutivo_plataforma_origen(filename: str) -> str:
+    """
+    Extrae el consecutivo de la plataforma de origen del filename.
+    Ejemplo: RE_ESP_TUTGMF0001003920241002-0001.zip, me quedo con 0001
+    """
+    # Define la expresión regular para extraer el consecutivo de la plataforma de origen
+    prefix = env.CONST_PRE_SPECIAL_FILE
+    pattern = rf'{prefix}_TUTGMF\d{{8}}\d{{8}}-(\d{{4}})\.zip$'
+    match = re.search(pattern, filename)
+
+    return match.group(1) if match else ''

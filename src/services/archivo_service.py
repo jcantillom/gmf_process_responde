@@ -1,7 +1,14 @@
+from datetime import datetime
 from src.repositories.archivo_repository import ArchivoRepository
 from src.utils.s3_utils import S3Utils
-from src.utils.event_utils import extract_filename_from_body, extract_bucket_from_body
-from src.utils.sqs_utils import delete_message_from_sqs
+from src.utils.event_utils import (
+    extract_filename_from_body,
+    extract_bucket_from_body,
+    extract_date_from_filename,
+    create_file_id,
+    extract_consecutivo_plataforma_origen,
+)
+from src.utils.sqs_utils import delete_message_from_sqs, send_message_to_sqs
 from src.utils.validator_utils import ArchivoValidator
 from src.logs.logger import get_logger
 from sqlalchemy.orm import Session
@@ -9,6 +16,8 @@ from src.config.config import env
 from .error_handling_service import ErrorHandlingService
 from src.repositories.archivo_estado_repository import ArchivoEstadoRepository
 from src.repositories.rta_procesamiento_repository import RtaProcesamientoRepository
+from ..models.cgd_archivo import CGDArchivo
+import sys
 
 logger = get_logger(env.DEBUG_MODE)
 
@@ -23,160 +32,313 @@ class ArchivoService:
         self.rta_procesamiento_repository = RtaProcesamientoRepository(db)
 
     def validar_y_procesar_archivo(self, event):
-        for record in event.get("Records", []):
+        # Extraer detalles del evento
+        file_name, bucket, receipt_handle, acg_nombre_archivo = (
+            self.extract_event_details(event)
+        )
+
+        # Validar datos del evento
+        if not self.validate_event_data(file_name, bucket, receipt_handle):
+            return
+
+        # Validar existencia del archivo en el bucket
+        if not self.validate_file_existence_in_bucket(
+                file_name, bucket, receipt_handle
+        ):
+            return
+
+        # Si el archivo es especial
+        if self.archivo_validator.is_special_prefix(file_name):
+            self.process_special_file(
+                file_name, bucket, receipt_handle, acg_nombre_archivo
+            )
+        else:
+            # Si el archivo es general
+            self.process_general_file(
+                file_name, bucket, receipt_handle, acg_nombre_archivo
+            )
+
+    # Funciones auxiliares
+
+    def extract_event_details(self, event):
+        """Extrae los detalles del evento necesarios para el procesamiento."""
+        for record in event["Records"]:
             receipt_handle = record.get("receiptHandle")
-            body = record.get("body", "{}")
-            filename = extract_filename_from_body(body)
-            bucket = extract_bucket_from_body(body)
-            # ======================================================================
-            #    VALIDATION SI EL EVENTO CONTIENE EL NOMBRE DEL ARCHIVO Y EL BUCKET
-            # ======================================================================
-            if not filename or not bucket:
-                logger.error("El evento no contiene el nombre del archivo o el bucket",
-                             extra={"event_filename": "No filename"})
-                delete_message_from_sqs(receipt_handle, env.SQS_URL_PRO_RESPONSE_TO_PROCESS)
-                return
-            # ==============================================================
-            #          VALIDATION SI EL ARCHIVO EXISTE EN EL BUCKET
-            # ==============================================================
-            file_key = f"{env.DIR_RECEPTION_FILES}/{filename}"
-            if not self.s3_utils.check_file_exists_in_s3(bucket, file_key):
-                logger.error("El archivo no existe en el bucket",
-                             extra={"event_filename": filename})
-                delete_message_from_sqs(receipt_handle, env.SQS_URL_PRO_RESPONSE_TO_PROCESS)
-                return
-            # ==============================================================
-            #            VALIDATION SI EL ARCHIVO ES ESPECIAL
-            # ==============================================================
-            # Verificar si el archivo tiene prefijo especial
-            if self.archivo_validator.is_special_prefix(filename):
-                # Validar la estructura si es especial
-                if not self.archivo_validator.is_special_file(filename):
+            body = record.get("body", {})
+            file_name = extract_filename_from_body(body)
+            bucket_name = extract_bucket_from_body(body)
+            acg_nombre_archivo = file_name.split(".")[0]
+            return file_name, bucket_name, receipt_handle, acg_nombre_archivo
 
-                    self.error_handling_service.handle_file_error(
-                        id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
-                        filekey=file_key,
-                        bucket=bucket,
-                        receipt_handle=receipt_handle,
-                        codigo_error=env.CONST_COD_ERROR_EMAIL,
-                        filename=filename,
+    def validate_event_data(self, file_name, bucket_name, receipt_handle):
+        """Valida que el evento contenga el nombre del archivo y el bucket."""
+        if not file_name or not bucket_name:
+            delete_message_from_sqs(
+                receipt_handle, env.SQS_URL_PRO_RESPONSE_TO_PROCESS, file_name
+            )
+            logger.error(
+                "Nombre de archivo o bucket faltante en el evento; mensaje eliminado."
+            )
+            return False
+        return True
+
+    def validate_file_existence_in_bucket(self, file_name, bucket_name, receipt_handle):
+        """Valida que el archivo exista en el bucket especificado."""
+        file_key = f"{env.DIR_RECEPTION_FILES}/{file_name}"
+        if not self.s3_utils.check_file_exists_in_s3(bucket_name, file_key):
+            delete_message_from_sqs(
+                receipt_handle, env.SQS_URL_PRO_RESPONSE_TO_PROCESS, file_name
+            )
+            logger.error(
+                f"El archivo {file_key} no existe en el bucket {bucket_name}; mensaje eliminado."
+            )
+            return False
+        return True
+
+    def process_special_file(
+            self, file_name, bucket, receipt_handle, acg_nombre_archivo
+    ):
+        """Proceso de manejo de archivos especiales."""
+        archivo_id = self.archivo_repository.get_archivo_by_nombre_archivo(
+            acg_nombre_archivo
+        ).id_archivo
+        if self.archivo_validator.is_special_file(file_name):
+            if self.check_existing_special_file(acg_nombre_archivo):
+                estado = self.validar_estado_special_file(
+                    acg_nombre_archivo, bucket, receipt_handle
+                )
+                if estado:
+                    new_file_key = self.move_file_and_update_state(
+                        bucket, file_name, acg_nombre_archivo
                     )
-                    logger.error("El nombre del archivo especial no cumple con el formato esperado",
-                                 extra={"event_filename": filename})
-                    return
-                else:
-                    logger.info(f"El archivo especial {filename} cumple con el formato.",
-                                extra={"event_filename": filename})
-
-                    # TODO: Procesar archivo especial
-            # ========================================================================
-            #                    VALIDATION SI EL ARCHIVO ES GENERAL
-            # ========================================================================
+                    self.insert_file_states(acg_nombre_archivo, estado, file_name)
+                    self.unzip_file(
+                        bucket,
+                        new_file_key,
+                        archivo_id,
+                        acg_nombre_archivo,
+                        0,
+                        receipt_handle,
+                        self.error_handling_service,
+                    )
+                    self.process_sqs_response(archivo_id, file_name, receipt_handle)
             else:
-                # Si no es especial, se procesa como reintento o nota de débito
-                logger.debug(f"El archivo {filename} no es especial "
-                             f"se procesara como Reintento "
-                             f"o Nota Debito"
-                             , extra={"event_filename": filename})
+                self.create_and_process_new_special_file(
+                    file_name, acg_nombre_archivo, bucket, receipt_handle
+                )
+        else:
+            self.handle_invalid_special_file(file_name, bucket, receipt_handle)
 
-                # Validar la estructura si es general
-                if self.archivo_validator.is_general_file(filename):
-                    # validamos que el archivo existe en la base de datos
-                    acg_nombre_archivo = self.archivo_validator.build_acg_nombre_archivo(filename)
+    def check_existing_special_file(self, acg_nombre_archivo) -> bool:
+        """Valida si el archivo especial existe en la base de datos."""
+        exists = self.archivo_repository.check_special_file_exists(
+            acg_nombre_archivo, env.CONST_TIPO_ARCHIVO_ESPECIAL
+        )
+        if exists:
+            logger.warning(
+                f"El archivo especial {acg_nombre_archivo}.zip  ya existe en la base de datos"
+            )
+        return exists
 
-                    # ================================================================
-                    #    VALIDATION SI EL ARCHIVO EXISTE EN LA BASE DE DATOS
-                    # ===============================================================
-                    if not self.archivo_repository.check_file_exists(acg_nombre_archivo):
-                        self.error_handling_service.handle_file_error(
-                            id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
-                            filekey=file_key,
-                            bucket=bucket,
-                            receipt_handle=receipt_handle,
-                            codigo_error=env.CONST_COD_ERROR_EMAIL,
-                            filename=filename,
-                        )
-                        logger.error("El archivo no existe en la base de datos",
-                                     extra={"event_filename": filename})
-                        return
-                    # Si existe en la base de datos...😊
-                    else:
-                        logger.debug(f"El archivo general {filename} existe en la base de datos",
-                                     extra={"event_filename": filename})
+    def validar_estado_special_file(self, acg_nombre_archivo, bucket, receipt_handle):
+        # obtener el estado del archivo especial desde la base de datos
+        estado = self.archivo_repository.get_archivo_by_nombre_archivo(
+            acg_nombre_archivo
+        ).estado
+        file_name = acg_nombre_archivo + ".zip"
+        if estado:
+            if not self.archivo_validator.is_valid_state(estado):
+                logger.error(
+                    f" 🚫 El estado {estado} del archivo especial {file_name} no es válido 🚫",
+                    extra={"event_filename": file_name},
+                )
+                self.error_handling_service.handle_file_error(
+                    id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
+                    filekey=env.DIR_RECEPTION_FILES + "/" + file_name,
+                    bucket=bucket,
+                    receipt_handle=receipt_handle,
+                    codigo_error=env.CONST_COD_ERROR_EMAIL,
+                    filename=file_name,
+                )
+            else:
+                logger.debug(
+                    f" ✅ El estado {estado} del archivo especial {file_name} es válido ✅",
+                    extra={"event_filename": file_name},
+                )
+                return estado
+        else:
+            logger.error(
+                f"El archivo especial {file_name} no tiene estado, se elimina el mensaje de la cola"
+            )
+            sys.exit(1)
 
-                        # ====================================================
-                        #    VALIDATION SI EL ESTADO DEL ARCHIVO ES VÁLIDO
-                        # =====================================================
+    def get_estado_archivo(self, acg_nombre_archivo):
+        """Obtiene el estado del archivo."""
+        estado = self.archivo_repository.get_archivo_by_nombre_archivo(
+            acg_nombre_archivo
+        ).estado
+        logger.debug(
+            f"Cargando estado del archivo {acg_nombre_archivo} en la base de datos."
+        )
+        return estado
 
-                        estado_archivo = self.archivo_repository.get_archivo_by_nombre_archivo(
-                            acg_nombre_archivo).estado
+    def move_file_and_update_state(self, bucket, file_name, acg_nombre_archivo):
+        """Mueve el archivo y actualiza su estado."""
+        new_file_key = self.s3_utils.move_file_to_procesando(bucket, file_name)
+        self.archivo_repository.update_estado_archivo(
+            acg_nombre_archivo, env.CONST_ESTADO_LOAD_RTA_PROCESSING, 0
+        )
+        logger.debug(
+            f"Se actualiza el estado del archivo especial {acg_nombre_archivo} a {env.CONST_ESTADO_LOAD_RTA_PROCESSING}"
+        )
+        return new_file_key
 
-                        if not self.archivo_validator.is_valid_state(estado_archivo):
-                            self.error_handling_service.handle_file_error(
-                                id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
-                                filekey=file_key,
-                                bucket=bucket,
-                                receipt_handle=receipt_handle,
-                                codigo_error=env.CONST_COD_ERROR_EMAIL,
-                                filename=filename,
-                            )
-                            logger.error("El estado del archivo no es válido",
-                                         extra={"event_filename": filename})
-                            return
-                        # Si el estado es válido...😊
-                        else:
-                            logger.debug(f"El estado del archivo {filename} es válido",
-                                         extra={"event_filename": filename})
+    def insert_file_states(self, acg_nombre_archivo, estado, file_name):
+        """Inserta los estados del archivo en la base de datos."""
+        archivo_id = self.archivo_repository.get_archivo_by_nombre_archivo(
+            acg_nombre_archivo
+        ).id_archivo
+        fecha_cambio_estado = self.archivo_repository.get_archivo_by_nombre_archivo(
+            acg_nombre_archivo
+        ).fecha_recepcion
+        last_counter = (
+                self.rta_procesamiento_repository.get_last_contador_intentos_cargue(
+                    int(archivo_id)
+                )
+                + 1
+        )
 
-                            # Mover archivo a la carpeta de Procesando y obtener el nuevo path de Procesando
-                            new_file_key = self.s3_utils.move_file_to_procesando(bucket, file_key)
+        # Insertar en CGD_ARCHIVO_ESTADOS
+        self.estado_archivo_repository.insert_estado_archivo(
+            id_archivo=int(archivo_id),
+            estado_inicial=estado,
+            estado_final=env.CONST_ESTADO_LOAD_RTA_PROCESSING,
+            fecha_cambio_estado=fecha_cambio_estado,
+        )
+        logger.debug(
+            f"Se inserta el estado del archivo especial {file_name} en CGD_ARCHIVO_ESTADOS",
+            extra={"event_filename": file_name},
+        )
 
-                            # Actualizar estado del archivo a 'Procesando'
-                            self.archivo_repository.update_estado_archivo(
-                                acg_nombre_archivo,
-                                env.CONST_ESTADO_LOAD_RTA_PROCESSING,
-                                0)
+        # Insertar en CGD_RTA_PROCESAMIENTO
+        type_response = self.archivo_validator.get_type_response(file_name)
+        self.rta_procesamiento_repository.insert_rta_procesamiento(
+            id_archivo=int(archivo_id),
+            nombre_archivo_zip=file_name,
+            tipo_respuesta=type_response,
+            estado=env.CONST_ESTADO_INICIADO,
+            contador_intentos_cargue=last_counter,
+        )
+        logger.debug(
+            f"Se inserta la respuesta de procesamiento del archivo especial {file_name} en CGD_RTA_PROCESAMIENTO"
+        )
 
-                            # ==========================================================================
-                            #    INSERTAR ESTADO DEL ARCHIVO EN LA BASE DE DATOS (CGD_ARCHIVO_ESTADOS)
-                            # ==========================================================================
-                            # values
-                            archivo_id = self.archivo_repository.get_archivo_by_nombre_archivo(
-                                acg_nombre_archivo).id_archivo
-                            fecha_cambio_estado = self.archivo_repository.get_archivo_by_nombre_archivo(
-                                acg_nombre_archivo).fecha_recepcion
-                            last_counter = self.rta_procesamiento_repository.get_last_contador_intentos_cargue(
-                                int(archivo_id))
-                            new_counter = last_counter + 1
+    def unzip_file(
+            self,
+            bucket,
+            new_file_key,
+            archivo_id,
+            acg_nombre_archivo,
+            new_counter,
+            receipt_handle,
+            error_handling_service,
+    ):
+        """
+        Descomprime un archivo
+        """
+        self.s3_utils.unzip_file_in_s3(
+            bucket,
+            new_file_key,
+            int(archivo_id),
+            acg_nombre_archivo,
+            new_counter,
+            receipt_handle,
+            error_handling_service,
+        )
 
-                            self.estado_archivo_repository.insert_estado_archivo(
-                                id_archivo=int(archivo_id),
-                                estado_inicial=estado_archivo,
-                                estado_final=env.CONST_ESTADO_LOAD_RTA_PROCESSING,
-                                fecha_cambio_estado=fecha_cambio_estado
-                            )
+    def process_sqs_response(self, archivo_id, file_name, receipt_handle):
+        """Manejo de la respuesta SQS."""
+        if self.rta_procesamiento_repository.is_estado_enviado(
+                int(archivo_id), file_name
+        ):
+            delete_message_from_sqs(
+                receipt_handle, env.SQS_URL_PRO_RESPONSE_TO_PROCESS, file_name
+            )
+        else:
+            message_body = {
+                "file_id": int(archivo_id),
+                "response_processing_id": int(
+                    self.rta_procesamiento_repository.get_id_rta_procesamiento_by_id_archivo(
+                        int(archivo_id), file_name
+                    )
+                ),
+            }
+            send_message_to_sqs(
+                env.SQS_URL_PRO_RESPONSE_TO_CONSOLIDATE, message_body, file_name
+            )
+            self.rta_procesamiento_repository.update_state_rta_procesamiento(
+                id_archivo=int(archivo_id), estado=env.CONST_ESTADO_SEND
+            )
+        delete_message_from_sqs(
+            receipt_handle, env.SQS_URL_PRO_RESPONSE_TO_PROCESS, file_name
+        )
 
-                            # ===================================================================================
-                            #  INSERTAR RESPUESTA DE PROCESAMIENTO EN LA BASE DE DATOS (CGD_RTA_PROCESAMIENTO)
-                            # ===================================================================================
-                            type_response = self.archivo_validator.get_type_response(filename)
-                            self.rta_procesamiento_repository.insert_rta_procesamiento(
-                                id_archivo=int(archivo_id),
-                                nombre_archivo_zip=filename,
-                                tipo_respuesta=type_response,
-                                estado=env.CONST_ESTADO_INICIADO,
-                                contador_intentos_cargue=new_counter
-                            )
+    def handle_invalid_special_file(self, file_name, bucket, receipt_handle):
+        """Maneja archivos especiales con formato incorrecto."""
+        file_key = f"{env.DIR_RECEPTION_FILES}/{file_name}"
+        self.error_handling_service.handle_file_error(
+            id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
+            filekey=file_key,
+            bucket=bucket,
+            receipt_handle=receipt_handle,
+            codigo_error=env.CONST_COD_ERROR_EMAIL,
+            filename=file_name,
+        )
+        logger.error(
+            f"Formato de archivo especial {file_name} no válido; mensaje eliminado."
+        )
 
-                            # ================================================================================
-                            #                DESCOMPRIMIR ARCHIVO DESDE LA CARPETA DE PROCESANDO
-                            # ================================================================================
-                            self.s3_utils.unzip_file_in_s3(
-                                bucket,
-                                new_file_key,
-                                int(archivo_id),
-                                acg_nombre_archivo,
-                                contador_intentos_cargue=new_counter,
-                                receipt_handle=receipt_handle,
-                                error_handling_service=self.error_handling_service
-                            )
+    def process_general_file(
+            self, file_name, bucket, receipt_handle, acg_nombre_archivo
+    ):
+        """Proceso de manejo de archivos generales."""
+        # Si el archivo no existe en la base de datos
+        if not self.archivo_repository.check_file_exists(acg_nombre_archivo):
+            self.error_handling_service.handle_file_error(
+                id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
+                filekey=f"{env.DIR_RECEPTION_FILES}/{file_name}",
+                bucket=bucket,
+                receipt_handle=receipt_handle,
+                codigo_error=env.CONST_COD_ERROR_EMAIL,
+                filename=file_name,
+            )
+            logger.error(
+                f"El archivo general {file_name} no existe en la base de datos; mensaje eliminado."
+            )
+            return
+
+        # Obtener y validar el estado del archivo
+        estado_archivo = self.archivo_repository.get_archivo_by_nombre_archivo(
+            acg_nombre_archivo
+        ).estado
+        if not self.archivo_validator.is_valid_state(estado_archivo):
+            self.error_handling_service.handle_file_error(
+                id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
+                filekey=f"{env.DIR_RECEPTION_FILES}/{file_name}",
+                bucket=bucket,
+                receipt_handle=receipt_handle,
+                codigo_error=env.CONST_COD_ERROR_EMAIL,
+                filename=file_name,
+            )
+            logger.error(
+                f"Estado del archivo general {file_name} no válido; mensaje eliminado."
+            )
+            return
+
+        self.s3_utils.move_file_to_procesando(bucket, file_name)
+        self.archivo_repository.update_estado_archivo(
+            acg_nombre_archivo, env.CONST_ESTADO_LOAD_RTA_PROCESSING, 0
+        )
+        logger.debug(
+            f"Estado del archivo general {file_name} actualizado a {env.CONST_ESTADO_LOAD_RTA_PROCESSING}."
+        )

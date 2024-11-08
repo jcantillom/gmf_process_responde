@@ -40,9 +40,19 @@ class EnvironmentSettings(BaseSettings):
     CONST_ESTADO_PROCESAMIENTO_RECHAZADO: str
     CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION: str
     CONST_COD_ERROR_DECOMPRESION: str
+    SUFFIX_RESPONSE_DEBITO: str
+    SUFFIX_RESPONSE_REINTEGROS: str
+    SUFFIX_RESPONSE_ESPECIALES: str
+    SQS_URL_PRO_RESPONSE_TO_UPLOAD: str
+    CONST_ESTADO_INIT_PENDING: str
+    S3_BUCKET_NAME: str
+    SQS_URL_PRO_RESPONSE_TO_CONSOLIDATE: str
+    CONST_ESTADO_SEND: str
+    CONST_TIPO_ARCHIVO_ESPECIAL: str
+    CONST_PLATAFORMA_ORIGEN: str
 
     class Config:
-        env_file = os.path.join(os.getcwd(), ".env")
+        env_file = ".env.testing" if "PYTEST_CURRENT_TEST" in os.environ else ".env"
         env_file_encoding = "utf-8"
 
 

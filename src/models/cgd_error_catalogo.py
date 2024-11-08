@@ -1,5 +1,6 @@
 from sqlalchemy import BOOLEAN, VARCHAR, Column
-from src.connection.database import Base
+from sqlalchemy.orm import relationship
+from .base import Base
 
 
 class CGDCatalogoErrores(Base):
@@ -9,6 +10,10 @@ class CGDCatalogoErrores(Base):
     descripcion = Column("descripcion", VARCHAR(1000), nullable=False)
     proceso = Column("proceso", VARCHAR(1000), nullable=False)
     aplica_reprogramar = Column("aplica_reprogramar", BOOLEAN, nullable=False)
+
+    # Relaciones
+    # rta_pro_archivos = relationship("CGDRtaProArchivos", back_populates="catalogo_error")
+    archivos = relationship("CGDArchivo", back_populates="catalogo_error")
 
     def __repr__(self):
         return (f"<ErrorCatalogo(codigo_error={self.codigo_error}, "

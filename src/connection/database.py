@@ -1,9 +1,6 @@
-import os
 from contextlib import contextmanager
-from sqlalchemy import URL
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy.orm import declarative_base
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.session import Session
 from src.aws.clients import AWSClients
@@ -16,8 +13,6 @@ from src.utils.singleton import SingletonMeta
 load_dotenv()
 
 logger = get_logger(env.DEBUG_MODE)
-
-Base = declarative_base()
 
 
 class DataAccessLayer(metaclass=SingletonMeta):
@@ -35,19 +30,11 @@ class DataAccessLayer(metaclass=SingletonMeta):
             secrets = AWSClients.get_secret(env.SECRETS_DB)
             db_user = secrets.get("USERNAME")
             db_password = secrets.get("PASSWORD")
-            db_host = os.getenv("DB_HOST")
-            db_port = os.getenv("DB_PORT")
-            db_name = os.getenv("DB_NAME")
+            db_host = env.DB_HOST
+            db_port = env.DB_PORT
+            db_name = env.DB_NAME
 
-            sql_database_url: URL = URL.create(
-                'postgresql+psycopg2',
-                host=db_host,
-                port=db_port,
-                username=db_user,
-                password=db_password,
-                database=db_name
-            )
-
+            sql_database_url = f'postgresql+psycopg2://{db_user}:{db_password}@{db_host}:{db_port}/{db_name}'
             self.engine = create_engine(
                 sql_database_url,
                 pool_pre_ping=True,
@@ -60,7 +47,7 @@ class DataAccessLayer(metaclass=SingletonMeta):
                 autoflush=False,
                 bind=self.engine,
                 expire_on_commit=False
-            )(bind=self.engine)
+            )()
 
             logger.info("Conexión a la base de datos establecida 🚀")
         except Exception as e:
@@ -81,12 +68,6 @@ class DataAccessLayer(metaclass=SingletonMeta):
             raise
         finally:
             session.close()
-
-    def create_all(self):
-        """
-        Crea las tablas en la base de datos
-        """
-        Base.metadata.create_all(self.engine)
 
     def close_session(self):
         """

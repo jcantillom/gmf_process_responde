@@ -51,8 +51,11 @@ for param in retries_parameters:
 # Crear parámetro específico para archivos especiales
 special_files_param_name = "/gmf/process-responses/general-config"
 special_files_param_value = json.dumps({
+    "files-reponses-debito-reverso": "TXCONCOBROGMF,TXSINCOBROGMF,REVERSOSAPLICADOS,INCONSISTENCIASPROC,CONTROLTX",
+    "files-reponses-reintegros": "NOVEDADESREIN,INCONSISTENCIASPROC,CONTROLTX",
+    "files-reponses-especiales": "NOVEDADESREIN,TITULARSUPERATOPE",
     "start-special-files": "RE_ESP_TUTGMF00010039",
-    "end-special-files": "-0001",
+    "end-special-files": "0001",
     "start-name-files-rta": "RE_PRO_TUTGMF00010039",
     "valid_states_process": [
         "ENVIADO",
@@ -86,8 +89,12 @@ for folder in folders:
 sqs_client = boto3.client('sqs', endpoint_url=endpoint_url)
 
 # Crear colas en SQS
-queues = ["pro-responses-to-process", "pro-responses-to-validate", "pro-responses-to-consolidate", "emails-to-send",
-          "pro-responses-to-reception"]
+queues = [
+    "pro-responses-to-process",
+    "pro-responses-to-send",
+    "pro-responses-to-upload",
+    "pro-responses-to-consolidation",
+]
 for queue in queues:
     sqs_client.create_queue(QueueName=queue)
     print(f"Cola '{queue}' creada exitosamente en SQS.")

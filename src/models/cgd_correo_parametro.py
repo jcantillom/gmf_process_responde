@@ -1,5 +1,5 @@
 from sqlalchemy import CHAR, VARCHAR, Column, ForeignKey
-from src.connection.database import Base
+from .base import Base
 
 
 class CGDCorreosParametros(Base):
