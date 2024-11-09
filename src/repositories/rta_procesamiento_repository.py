@@ -1,11 +1,13 @@
-import sys
-
 from src.models.cgd_rta_procesamiento import CGDRtaProcesamiento
 from .archivo_repository import ArchivoRepository
 from datetime import datetime
 from sqlalchemy.orm import Session
 from src.utils.validator_utils import ArchivoValidator
 from src.config.config import env
+
+
+class ProcessingResponseNotFoundError(Exception):
+    pass
 
 
 class RtaProcesamientoRepository:
@@ -73,15 +75,6 @@ class RtaProcesamientoRepository:
             self.db.rollback()
             raise e
 
-        # TODO: validar si es necesario actualizar el estado del archivo
-        # Actualizar el estado del archivo
-        # nombre_archivo = self.archivo_validator.build_acg_nombre_archivo(nombre_archivo_zip)
-        # self.archivo_repository.update_estado_archivo(
-        #     nombre_archivo,
-        #     estado,
-        #     contador_intentos_cargue
-        # )
-
     def update_state_rta_procesamiento(
             self,
             id_archivo: int,
@@ -103,7 +96,8 @@ class RtaProcesamientoRepository:
             last_entry.estado = estado
             self.db.commit()
         else:
-            raise Exception("No se encontró la respuesta de procesamiento")
+            raise ProcessingResponseNotFoundError(
+                f"No se encontró una respuesta de procesamiento para el archivo con ID {id_archivo}")
 
     def get_tipo_respuesta(self, id_archivo: int) -> str:
         """

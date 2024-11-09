@@ -99,6 +99,7 @@ class ArchivoService:
             self, file_name, bucket, receipt_handle, acg_nombre_archivo
     ):
         """Proceso de manejo de archivos especiales."""
+        #TODO meter dentro del condicional.
         archivo_id = self.archivo_repository.get_archivo_by_nombre_archivo(
             acg_nombre_archivo
         ).id_archivo
