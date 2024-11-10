@@ -136,8 +136,6 @@ class S3Utils:
         # Obtener el tipo de respuesta del archivo.
         expected_file_count, tipo_respuesta = (
             self.get_cantidad_de_archivos_esperados_en_el_zip(id_archivo, nombre_archivo))
-        print("expected_file_count", expected_file_count)
-        print("tipo_respuesta", tipo_respuesta)
 
         timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
         base_folder = file_key.rsplit("/", 1)[0]
@@ -148,10 +146,6 @@ class S3Utils:
             zip_obj = self.s3.get_object(Bucket=bucket_name, Key=file_key)
             with ZipFile(BytesIO(zip_obj['Body'].read())) as zip_file:
                 extracted_files = []
-                print("cantidad dentro del zip: ", len(zip_file.infolist()))
-                #imprimir los nombres de los archivos dentro del zip
-                for file_info in zip_file.infolist():
-                    print("nombre del archivo dentro del zip: ", file_info.filename)
                 for file_info in zip_file.infolist():
                     # Crear la clave S3 para cada archivo descomprimido
                     extracted_file_key = f"{destination_folder}{file_info.filename}"
@@ -176,7 +170,7 @@ class S3Utils:
 
                 # validar la estructura del nombre de cada archivo descomprimido
                 for file_info in zip_file.infolist():
-                    is_valid = self.validator.is_valid_extracted_filename(
+                    is_valid = self.validator.validar_archivos_in_zip(
                         file_info.filename, tipo_respuesta, nombre_archivo
                     )
                     if not is_valid:

@@ -1,3 +1,4 @@
+import os.path
 import re
 import json
 from datetime import datetime
@@ -229,4 +230,48 @@ class ArchivoValidator:
         logger.debug(
             f"El archivo {extracted_filename} cumple con todas las validaciones de estructura para tipo {tipo_respuesta}."
         )
+        return True
+
+    def validar_archivos_in_zip(self, extracted_filename: str, tipo_respuesta: str,
+                                acg_nombre_archivo: str) -> bool:
+        """
+        Valida los archivos contenidos en un archivo zip.
+        """
+        if not extracted_filename.startswith("RE_"):
+            logger.error(f"El archivo {extracted_filename} no comienza con 'RE_'.")
+            return False
+
+        nombre_base_zip = os.path.splitext(os.path.basename(acg_nombre_archivo))[0]
+
+        nombre_base_zip_sin_prefijo = nombre_base_zip
+
+        # elimina el prefijo 'ESP_' o "PRO" del nombre del archivo
+        if nombre_base_zip.startswith(env.CONST_PRE_SPECIAL_FILE):
+            nombre_base_zip_sin_prefijo = nombre_base_zip.replace(env.CONST_PRE_SPECIAL_FILE + "_", "")
+        elif nombre_base_zip.startswith(env.CONST_PRE_GENERAL_FILE):
+            nombre_base_zip_sin_prefijo = nombre_base_zip.replace(env.CONST_PRE_GENERAL_FILE + "_", "")
+
+        # veriricar si nombre_base_zip_sin_prefijo esta en extracted_filename
+        if nombre_base_zip_sin_prefijo not in extracted_filename:
+            logger.error(f"El archivo {extracted_filename} no contiene el nombre base {nombre_base_zip_sin_prefijo}.",
+                         extra={"event_filename": {"filename": acg_nombre_archivo}})
+            return False
+
+        # verificar si el archivo tiene el sufijo correcto
+        valid_suffixes = self.valid_file_suffixes.get(tipo_respuesta, [])
+        logger.debug(f"Sufijos válidos para tipo {tipo_respuesta}: {valid_suffixes}",
+                     extra={"event_filename": acg_nombre_archivo})
+
+        suffix_match = any(extracted_filename.endswith(f"-{suffix}.txt") for suffix in valid_suffixes)
+
+        if not suffix_match:
+            logger.error(
+                f"El archivo {extracted_filename} no finaliza con un sufijo válido para tipo {tipo_respuesta}.",
+                extra={"event_filename": acg_nombre_archivo})
+            return False
+
+        logger.debug(
+            f"El archivo {extracted_filename} cumple con todas las validaciones de estructura para tipo {tipo_respuesta}.",
+            extra={"event_filename": acg_nombre_archivo})
+
         return True
