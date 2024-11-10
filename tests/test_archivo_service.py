@@ -180,7 +180,7 @@ class TestProcessSpecialFile(unittest.TestCase):
         self.service.check_existing_special_file = MagicMock()
         self.service.validar_estado_special_file = MagicMock()
         self.service.move_file_and_update_state = MagicMock()
-        self.service.insert_file_states = MagicMock()
+        self.service.insert_file_states_and_rta_processing = MagicMock()
         self.service.unzip_file = MagicMock()
         self.service.process_sqs_response = MagicMock()
         self.service.create_and_process_new_special_file = MagicMock()
@@ -208,7 +208,7 @@ class TestProcessSpecialFile(unittest.TestCase):
 
         # Verificar que se llamó a las funciones esperadas
         self.service.move_file_and_update_state.assert_called_once_with(bucket, file_name, acg_nombre_archivo)
-        self.service.insert_file_states.assert_called_once_with(acg_nombre_archivo, True, file_name)
+        self.service.insert_file_states_and_rta_processing.assert_called_once_with(acg_nombre_archivo, True, file_name)
         self.service.unzip_file.assert_called_once()
         self.service.process_sqs_response.assert_called_once()
 
@@ -572,7 +572,7 @@ class TestInsertFileStates(unittest.TestCase):
         file_name = "RE_ESP_FILE.zip"
 
         # Llamar a la función
-        self.service.insert_file_states(acg_nombre_archivo, estado, file_name)
+        self.service.insert_file_states_and_rta_processing(acg_nombre_archivo, estado, file_name)
 
         # Verificar que se llamó a get_archivo_by_nombre_archivo correctamente
         self.service.archivo_repository.get_archivo_by_nombre_archivo.assert_called_with(acg_nombre_archivo)

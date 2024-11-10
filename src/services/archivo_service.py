@@ -119,7 +119,7 @@ class ArchivoService:
                     new_file_key = self.move_file_and_update_state(
                         bucket, file_name, acg_nombre_archivo
                     )
-                    self.insert_file_states(acg_nombre_archivo, estado, file_name)
+                    self.insert_file_states_and_rta_processing(acg_nombre_archivo, estado, file_name)
                     self.unzip_file(
                         bucket,
                         new_file_key,
@@ -203,7 +203,7 @@ class ArchivoService:
         )
         return new_file_key
 
-    def insert_file_states(self, acg_nombre_archivo, estado, file_name):
+    def insert_file_states_and_rta_processing(self, acg_nombre_archivo, estado, file_name):
         """Inserta los estados del archivo en la base de datos."""
         archivo_id = self.archivo_repository.get_archivo_by_nombre_archivo(
             acg_nombre_archivo
@@ -226,7 +226,7 @@ class ArchivoService:
             fecha_cambio_estado=fecha_cambio_estado,
         )
         logger.debug(
-            f"Se inserta el estado del archivo especial {file_name} en CGD_ARCHIVO_ESTADOS",
+            f"Se inserta el estado del archivo {file_name} en CGD_ARCHIVO_ESTADOS",
             extra={"event_filename": file_name},
         )
 
@@ -362,4 +362,22 @@ class ArchivoService:
                 return
 
             # Mover el archivo a la carpeta de procesando
-            self.move_file_and_update_state(bucket, file_name, acg_nombre_archivo)
+            new_file_key = self.move_file_and_update_state(bucket, file_name, acg_nombre_archivo)
+            # Insertar estados del archivo en la base de datos y respuesta de procesamiento
+            self.insert_file_states_and_rta_processing(acg_nombre_archivo, estado_archivo, file_name)
+            # Descomprimir el archivo
+            self.unzip_file(
+                bucket,
+                new_file_key,
+                self.archivo_repository.get_archivo_by_nombre_archivo(acg_nombre_archivo).id_archivo,
+                acg_nombre_archivo,
+                0,
+                receipt_handle,
+                self.error_handling_service,
+            )
+            # Procesar la respuesta SQS
+            self.process_sqs_response(
+                self.archivo_repository.get_archivo_by_nombre_archivo(acg_nombre_archivo).id_archivo,
+                file_name,
+                receipt_handle,
+            )

@@ -207,7 +207,7 @@ class S3Utils:
 
             # Registrar los archivos descomprimidos en la tabla CGD_RTA_PRO_ARCHIVOS
             zip_filename = file_key.rsplit("/", 1)[-1]
-            id_rta_procesamiento = self.rta_procesamiento_repository.get_id_rta_procesamiento(
+            id_rta_procesamiento = self.rta_procesamiento_repository.get_id_rta_procesamiento_by_id_archivo(
                 id_archivo,
                 zip_filename,
             )
