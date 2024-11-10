@@ -63,7 +63,7 @@ class ErrorHandlingService:
             logger.error("El archivo se encuentra en estado procesado",
                          extra={"filename": filename})
             return
-        logger.debug("Enviando mensaje de error a la cola de correos SQS 📧")
+        logger.debug("Enviando mensaje de error a la cola de correos SQS 'emails-to-send'")
 
         # Obtener parámetros de la plantilla
         mail_parameters = self.correo_parametro_repository.get_parameters_by_template(id_plantilla)

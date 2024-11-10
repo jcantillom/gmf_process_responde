@@ -10,8 +10,13 @@ from src.utils.event_utils import (
     extract_date_from_filename,
     create_file_id,
     extract_consecutivo_plataforma_origen,
+    build_acg_name_if_general_file,
 )
-from src.utils.sqs_utils import delete_message_from_sqs, send_message_to_sqs, build_email_message
+from src.utils.sqs_utils import (
+    delete_message_from_sqs,
+    send_message_to_sqs,
+    build_email_message,
+)
 from src.utils.singleton import SingletonMeta
 from src.services.error_handling_service import ErrorHandlingService
 import unittest
@@ -165,6 +170,16 @@ class TestEventUtils(unittest.TestCase):
         # Ejecutar y verificar que el consecutivo extraído es correcto
         result = extract_consecutivo_plataforma_origen(filename)
         self.assertEqual(result, "0001")
+
+    @patch('src.utils.event_utils.env')
+    def test_build_acg_name_if_general_file(self, mock_env):
+        # Configurar el prefijo del archivo general en la variable de entorno
+        mock_env.CONST_PRE_GENERAL_FILE = "RE_GEN"
+        acg_nombre_archivo = "RE_GEN_TUTGMF0001003920241002-0001.zip"
+
+        # Ejecutar y verificar que el nombre del archivo ACG generado es correcto
+        result = build_acg_name_if_general_file(acg_nombre_archivo)
+        self.assertEqual(result, "TUTGMF0001003920241002-0001.zip")
 
 
 class TestSingleton(unittest.TestCase):
@@ -344,7 +359,6 @@ class TestS3Utils(unittest.TestCase):
 
         # Mockear la cantidad esperada de archivos
         self.s3_utils.get_cantidad_de_archivos_esperados_en_el_zip = MagicMock(return_value=(2, '01'))
-
 
     def test_check_file_exists_in_s3_exists(self):
         # Simular que el archivo existe en S3

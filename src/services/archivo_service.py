@@ -7,6 +7,7 @@ from src.utils.event_utils import (
     extract_date_from_filename,
     create_file_id,
     extract_consecutivo_plataforma_origen,
+    build_acg_name_if_general_file,
 )
 from src.utils.sqs_utils import delete_message_from_sqs, send_message_to_sqs
 from src.utils.validator_utils import ArchivoValidator
@@ -42,9 +43,7 @@ class ArchivoService:
             return
 
         # Validar existencia del archivo en el bucket
-        if not self.validate_file_existence_in_bucket(
-                file_name, bucket, receipt_handle
-        ):
+        if not self.validate_file_existence_in_bucket(file_name, bucket, receipt_handle):
             return
 
         # Si el archivo es especial
@@ -80,26 +79,34 @@ class ArchivoService:
                 "Nombre de archivo o bucket faltante en el evento; mensaje eliminado."
             )
             return False
+        logger.debug(
+            f"El evento contiene el nombre del archivo {file_name} y el bucket {bucket_name}."
+        )
         return True
 
     def validate_file_existence_in_bucket(self, file_name, bucket_name, receipt_handle):
         """Valida que el archivo exista en el bucket especificado."""
         file_key = f"{env.DIR_RECEPTION_FILES}/{file_name}"
         if not self.s3_utils.check_file_exists_in_s3(bucket_name, file_key):
+            logger.error(
+                "El archivo NO existe en el bucket ===> Se eliminara el mensaje de la cola",
+                extra={"event_filename": file_name}
+            )
             delete_message_from_sqs(
                 receipt_handle, env.SQS_URL_PRO_RESPONSE_TO_PROCESS, file_name
             )
-            logger.error(
-                f"El archivo {file_key} no existe en el bucket {bucket_name}; mensaje eliminado."
-            )
             return False
+        logger.debug(
+            "El archivo SI existe en el bucket",
+            extra={"event_filename": file_name}
+        )
         return True
 
     def process_special_file(
             self, file_name, bucket, receipt_handle, acg_nombre_archivo
     ):
         """Proceso de manejo de archivos especiales."""
-        #TODO meter dentro del condicional.
+        # TODO meter dentro del condicional.
         archivo_id = self.archivo_repository.get_archivo_by_nombre_archivo(
             acg_nombre_archivo
         ).id_archivo
@@ -304,7 +311,18 @@ class ArchivoService:
     ):
         """Proceso de manejo de archivos generales."""
         # Si el archivo no existe en la base de datos
+        acg_nombre_archivo = build_acg_name_if_general_file(acg_nombre_archivo)
         if not self.archivo_repository.check_file_exists(acg_nombre_archivo):
+            error_message = (
+                "El archivo NO existe en la base de datos\n"
+                "===> Se eliminara el mensaje de la cola ... \n"
+                "===> Se movera el archivo a la carpeta de bucket/Rechazados ...\n"
+                "===> Se Eliminara el archivo del bucket/Recibidos ..."
+            )
+            logger.error(
+                error_message,
+                extra={"event_filename": file_name}
+            )
             self.error_handling_service.handle_file_error(
                 id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
                 filekey=f"{env.DIR_RECEPTION_FILES}/{file_name}",
@@ -313,10 +331,11 @@ class ArchivoService:
                 codigo_error=env.CONST_COD_ERROR_EMAIL,
                 filename=file_name,
             )
-            logger.error(
-                f"El archivo general {file_name} no existe en la base de datos; mensaje eliminado."
-            )
             return
+        logger.debug(
+            f"El archivo existe en la base de datos.",
+            extra={"event_filename": file_name}
+        )
 
         # Obtener y validar el estado del archivo
         estado_archivo = self.archivo_repository.get_archivo_by_nombre_archivo(

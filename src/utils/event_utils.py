@@ -64,6 +64,15 @@ def create_file_id(filename: str) -> int:
         return int(f"{date}{componente1}{componente2}{componente3}")
 
 
+def build_acg_name_if_general_file(acg_nombre_archivo: str) -> str:
+    """
+    Esta Function se encarga de quitar el prefijo env.CONST_PRE_GENERAL_FILE,
+    al nombre del archivo.
+    """
+    acg_nombre_archivo = acg_nombre_archivo.replace(env.CONST_PRE_GENERAL_FILE, "")
+    return acg_nombre_archivo.lstrip("_")
+
+
 def extract_consecutivo_plataforma_origen(filename: str) -> str:
     """
     Extrae el consecutivo de la plataforma de origen del filename.
