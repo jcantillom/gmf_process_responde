@@ -105,7 +105,6 @@ class ArchivoService:
     def process_special_file(
             self, file_name, bucket, receipt_handle, acg_nombre_archivo):
         """Proceso de manejo de archivos especiales."""
-        # TODO meter dentro del condicional.
         if self.archivo_validator.is_special_file(file_name):
             # Verificar si el archivo especial ya existe en la base de datos
             if self.check_existing_special_file(acg_nombre_archivo):
@@ -131,6 +130,9 @@ class ArchivoService:
                     )
                     self.process_sqs_response(archivo_id, file_name, receipt_handle)
             else:
+                logger.debug(
+                    f"El archivo especial {file_name} no existe en la base de datos."
+                )
                 self.create_and_process_new_special_file(
                     file_name, acg_nombre_archivo, bucket, receipt_handle
                 )
