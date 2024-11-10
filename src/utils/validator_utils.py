@@ -96,7 +96,11 @@ class ArchivoValidator:
             logger.debug(f"La fecha {fecha_str} en el archivo {filename} es mayor a la fecha actual.")
             return False
 
-        logger.debug(f"El archivo {filename} cumple con la estructura de archivo especial.")
+        logger.debug(f"El archivo cumple con la estructura de archivo especial.",
+                     extra={"event_filename": {
+                         "filename": filename,
+                         "fecha_str": fecha_str,
+                     }})
         return True
 
     def validate_filename_structure_for_general_file(self, filename: str) -> bool:
@@ -183,13 +187,14 @@ class ArchivoValidator:
         Obtiene el tipo de respuesta del archivo.
         """
         if self.is_special_prefix(filename):
-            return "03"
+            return env.CONST_TIPO_ARCHIVO_ESPECIAL
         elif filename.startswith(env.CONST_PRE_GENERAL_FILE) and filename.endswith("-R.zip"):
-            return "02"
+            return env.CONST_TIPO_ARCHIVO_GENERAL
         elif filename.startswith(env.CONST_PRE_GENERAL_FILE):
-            return "01"
+            return env.CONST_TIPO_ARCHIVO_GENERAL_REINTEGROS
         else:
-            return "00"
+            logger.error(f"El archivo no cumple con ninguna estructura de tipo de respuesta.",
+                         extra={"event_filename": {"filename": filename}})
 
     def is_valid_extracted_filename(self, extracted_filename: str, tipo_respuesta: str,
                                     acg_nombre_archivo: str) -> bool:

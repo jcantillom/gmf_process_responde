@@ -103,14 +103,11 @@ class ArchivoService:
         return True
 
     def process_special_file(
-            self, file_name, bucket, receipt_handle, acg_nombre_archivo
-    ):
+            self, file_name, bucket, receipt_handle, acg_nombre_archivo):
         """Proceso de manejo de archivos especiales."""
         # TODO meter dentro del condicional.
-        archivo_id = self.archivo_repository.get_archivo_by_nombre_archivo(
-            acg_nombre_archivo
-        ).id_archivo
         if self.archivo_validator.is_special_file(file_name):
+            # Verificar si el archivo especial ya existe en la base de datos
             if self.check_existing_special_file(acg_nombre_archivo):
                 estado = self.validar_estado_special_file(
                     acg_nombre_archivo, bucket, receipt_handle
@@ -120,6 +117,9 @@ class ArchivoService:
                         bucket, file_name, acg_nombre_archivo
                     )
                     self.insert_file_states_and_rta_processing(acg_nombre_archivo, estado, file_name)
+                    archivo_id = self.archivo_repository.get_archivo_by_nombre_archivo(
+                        acg_nombre_archivo
+                    ).id_archivo
                     self.unzip_file(
                         bucket,
                         new_file_key,
@@ -144,7 +144,8 @@ class ArchivoService:
         )
         if exists:
             logger.warning(
-                f"El archivo especial {acg_nombre_archivo}.zip  ya existe en la base de datos"
+                f"El archivo especial ya existe en la base de datos",
+                extra={"event_filename": acg_nombre_archivo},
             )
         return exists
 
@@ -157,7 +158,7 @@ class ArchivoService:
         if estado:
             if not self.archivo_validator.is_valid_state(estado):
                 logger.error(
-                    f" 🚫 El estado {estado} del archivo especial {file_name} no es válido 🚫",
+                    f" El estado {estado} del archivo especial no es válido ",
                     extra={"event_filename": file_name},
                 )
                 self.error_handling_service.handle_file_error(
@@ -170,7 +171,7 @@ class ArchivoService:
                 )
             else:
                 logger.debug(
-                    f" ✅ El estado {estado} del archivo especial {file_name} es válido ✅",
+                    f" El estado {estado} del archivo especial es válido",
                     extra={"event_filename": file_name},
                 )
                 return estado

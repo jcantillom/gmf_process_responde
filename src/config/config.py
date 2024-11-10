@@ -50,6 +50,8 @@ class EnvironmentSettings(BaseSettings):
     CONST_ESTADO_SEND: str
     CONST_TIPO_ARCHIVO_ESPECIAL: str
     CONST_PLATAFORMA_ORIGEN: str
+    CONST_TIPO_ARCHIVO_GENERAL: str
+    CONST_TIPO_ARCHIVO_GENERAL_REINTEGROS: str
 
     class Config:
         env_file = ".env.testing" if "PYTEST_CURRENT_TEST" in os.environ else ".env"

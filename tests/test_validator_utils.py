@@ -6,7 +6,7 @@ from assertpy import assert_that
 
 from botocore.exceptions import ClientError
 
-from src.config.config import env
+from src.config.config import env, logger
 from src.utils.validator_utils import ArchivoValidator  # Ajusta la ruta según tu estructura
 
 
@@ -240,7 +240,7 @@ class TestArchivoValidator(unittest.TestCase):
         result = self.validator.get_type_response(filename)
 
         # Verificar que devuelve "02"
-        self.assertEqual(result, "02")
+        self.assertEqual(result, env.CONST_TIPO_ARCHIVO_GENERAL)
 
     def test_get_type_response_general_file_without_R(self):
         """
@@ -252,9 +252,9 @@ class TestArchivoValidator(unittest.TestCase):
         result = self.validator.get_type_response(filename)
 
         # Verificar que devuelve "01"
-        self.assertEqual(result, "01")
+        self.assertEqual(result, env.CONST_TIPO_ARCHIVO_GENERAL_REINTEGROS)
 
-    def test_get_type_response_default(self):
+    def test_get_type_response_error(self):
         """
         Prueba para archivos que no cumplen con ninguna condición.
         """
@@ -264,7 +264,8 @@ class TestArchivoValidator(unittest.TestCase):
         result = self.validator.get_type_response(filename)
 
         # Verificar que devuelve "00"
-        self.assertEqual(result, "00")
+        self.assertEqual(result, logger.error(
+            "El archivo no cumple con ninguna estructura de tipo de respuesta."))
 
     def test_valid_filename(self):
         """
