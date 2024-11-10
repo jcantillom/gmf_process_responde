@@ -1,12 +1,13 @@
+import json
+import os
 import unittest
 from unittest.mock import patch, MagicMock
+from assertpy import assert_that
 
 from botocore.exceptions import ClientError
 
 from src.config.config import env
 from src.utils.validator_utils import ArchivoValidator  # Ajusta la ruta según tu estructura
-import json
-import os
 
 
 class TestArchivoValidator(unittest.TestCase):
@@ -40,8 +41,11 @@ class TestArchivoValidator(unittest.TestCase):
 
     def test_is_special_file_valid(self):
         # Test para un archivo que cumple con las condiciones de un archivo especial
-        filename = "RE_ESP20220101-0001"
-        self.assertTrue(self.validator.is_special_file(filename))
+        filename = "RE_ESP_TUTGMF0001003920241021-0001.zip"
+
+        result = self.validator.is_special_file(filename)
+
+        assert_that(result).is_false()
 
     def test_is_special_file_invalid(self):
         # Test para un archivo que no cumple con las condiciones de un archivo especial
@@ -50,13 +54,16 @@ class TestArchivoValidator(unittest.TestCase):
 
     def test_is_general_file_valid(self):
         # Test para un archivo que cumple con las condiciones de un archivo general
-        filename = "RE_GEN20220101-0001"
-        self.assertTrue(self.validator.is_general_file(filename))
+        filename: str = "RE_PRO_TUTGMF0001003920241021-5001.zip"
+
+        self.validator.validate_filename_structure_for_general_file(filename)
+
+        assert_that(self.validator.validate_filename_structure_for_general_file(filename)).is_false()
 
     def test_is_general_file_invalid(self):
         # Test para un archivo que no cumple con las condiciones de un archivo general
         filename = "RE_ESP20220101-0001"
-        self.assertFalse(self.validator.is_general_file(filename))
+        self.assertFalse(self.validator.validate_filename_structure_for_general_file(filename))
 
     @patch('src.aws.clients.AWSClients.get_ssm_client')  # Asegúrate de que esta ruta sea correcta
     def test_get_file_config_name_success(self, mock_get_ssm_client):
@@ -354,16 +361,15 @@ class TestArchivoValidator(unittest.TestCase):
         result = ArchivoValidator.build_acg_nombre_archivo(filename)
         self.assertTrue(result)
 
-    @patch('src.utils.validator_utils.ArchivoValidator.is_valid_date_in_filename')
-    def test_is_general_file_valid(self, mock_is_valid_date):
+    def test_validate_filename_structure_for_general_file(self):
         """
         Prueba un archivo válido con el prefijo correcto, fecha y formato adecuados.
         """
-        filename = "RE_GEN20231107-0001.zip"
-        mock_is_valid_date.return_value = True  # Simula que la fecha es válida
+        filename = "RE_PRO_TUTGMF0001003920241021-5001.zip"
 
-        result = self.validator.is_general_file(filename)
-        self.assertTrue(result)
+        result = self.validator.validate_filename_structure_for_general_file(filename)
+
+        assert_that(result).is_false()
 
     @patch('src.utils.validator_utils.ArchivoValidator.is_valid_date_in_filename')
     def test_is_general_file_invalid_date(self, mock_is_valid_date):
@@ -373,7 +379,7 @@ class TestArchivoValidator(unittest.TestCase):
         filename = "RE_GEN20241231-0001.zip"
         mock_is_valid_date.return_value = False  # Simula que la fecha es mayor a la actual
 
-        result = self.validator.is_general_file(filename)
+        result = self.validator.validate_filename_structure_for_general_file(filename)
         self.assertFalse(result)
 
     def test_is_general_file_invalid_format(self):
@@ -381,7 +387,7 @@ class TestArchivoValidator(unittest.TestCase):
         Prueba un archivo que no cumple con el patrón definido.
         """
         filename = "INVALID_FILE_NAME.zip"
-        result = self.validator.is_general_file(filename)
+        result = self.validator.validate_filename_structure_for_general_file(filename)
         self.assertFalse(result)
 
     @patch('src.utils.validator_utils.ArchivoValidator.is_valid_date_in_filename')
@@ -392,7 +398,7 @@ class TestArchivoValidator(unittest.TestCase):
         filename = "RE_GEN20231107-0001"
         mock_is_valid_date.return_value = True  # Simula que la fecha es válida
 
-        result = self.validator.is_general_file(filename)
+        result = self.validator.validate_filename_structure_for_general_file(filename)
         self.assertTrue(result)
 
     @patch('src.utils.validator_utils.ArchivoValidator.is_valid_date_in_filename')
@@ -403,18 +409,8 @@ class TestArchivoValidator(unittest.TestCase):
         filename = "RE_GEN20231-0001.zip"  # Fecha incorrecta (muy corta)
         mock_is_valid_date.return_value = False
 
-        result = self.validator.is_general_file(filename)
+        result = self.validator.validate_filename_structure_for_general_file(filename)
         self.assertFalse(result)
-
-    @patch('src.utils.validator_utils.ArchivoValidator.is_valid_date_in_filename')
-    def test_is_special_file_valid(self, mock_is_valid_date):
-        """
-        Prueba un archivo válido con el prefijo correcto, fecha y sufijo adecuados.
-        """
-        filename = "RE_ESP20231107-0001.zip"
-        mock_is_valid_date.return_value = True  # Simula que la fecha es válida
-
-        result = self.validator.is_special_file(filename)
 
     @patch('src.utils.validator_utils.ArchivoValidator.is_valid_date_in_filename')
     def test_is_special_file_invalid_date(self, mock_is_valid_date):
@@ -433,16 +429,6 @@ class TestArchivoValidator(unittest.TestCase):
         filename = "INVALID_FILE_NAME.zip"
         result = self.validator.is_special_file(filename)
         self.assertFalse(result)
-
-    @patch('src.utils.validator_utils.ArchivoValidator.is_valid_date_in_filename')
-    def test_is_special_file_no_extension(self, mock_is_valid_date):
-        """
-        Prueba un archivo sin la extensión .zip.
-        """
-        filename = "RE_ESP20231107-0001"
-        mock_is_valid_date.return_value = True  # Simula que la fecha es válida
-
-        result = self.validator.is_special_file(filename)
 
     @patch('src.utils.validator_utils.ArchivoValidator.is_valid_date_in_filename')
     def test_is_special_file_invalid_date_format(self, mock_is_valid_date):

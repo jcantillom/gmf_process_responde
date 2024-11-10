@@ -81,7 +81,6 @@ class ErrorHandlingService:
 
         # Enviar mensaje a SQS
         send_message_to_sqs(env.SQS_URL_EMAILS, message, filename)
-        logger.debug("Mensaje de error enviado a la cola de correos")
 
     def handle_unzip_error(
             self,

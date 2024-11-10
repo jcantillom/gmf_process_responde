@@ -53,7 +53,8 @@ class S3Utils:
         # Verificar si el archivo existe antes de moverlo
         if not self.check_file_exists_in_s3(bucket_name, source_key):
             self.logger.error(
-                f"El archivo {source_key} no existe en el bucket {bucket_name}. No se puede mover a Rechazados.")
+                f"El archivo {source_key} no existe en el bucket {bucket_name}. No se puede mover a Rechazados.",
+                extra={"event_filename": source_key.replace(env.DIR_RECEPTION_FILES + "/", "")})
             sys.exit(1)
 
         try:
@@ -62,10 +63,12 @@ class S3Utils:
                 CopySource={'Bucket': bucket_name, 'Key': source_key},
                 Key=destination_key
             )
-            self.logger.debug("Archivo movido a la carpeta Rechazados: %s", destination_key)
+            self.logger.debug("Archivo movido a la carpeta Rechazados",
+                              extra={"event_filename": source_key.replace(env.DIR_RECEPTION_FILES + "/", "")})
 
             self.s3.delete_object(Bucket=bucket_name, Key=source_key)
-            self.logger.debug("Archivo original eliminado: %s", source_key)
+            self.logger.debug("Archivo original eliminado",
+                              extra={"event_filename": source_key.replace(env.DIR_RECEPTION_FILES + "/", "")})
 
             return destination_key
 

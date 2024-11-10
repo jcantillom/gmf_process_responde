@@ -99,9 +99,9 @@ class ArchivoValidator:
         logger.debug(f"El archivo {filename} cumple con la estructura de archivo especial.")
         return True
 
-    def is_general_file(self, filename: str) -> bool:
+    def validate_filename_structure_for_general_file(self, filename: str) -> bool:
         """
-        Verifica si el archivo cumple con la estructura definida para archivos generales.
+        Verifica si el archivo cumple con la estructura del nombre definida para archivos generales.
         """
         # Remueve el sufijo .zip si está presente
         if filename.endswith(".zip"):
@@ -112,7 +112,7 @@ class ArchivoValidator:
 
         match = re.match(expected_pattern, filename)
         if not match:
-            logger.debug(f"El archivo {filename} no cumple con la estructura de un archivo general.")
+            logger.debug(f"El archivo {filename} no cumple con el patrón de estructura general: {expected_pattern}")
             return False
 
         # Extraer la fecha del nombre de archivo y validar que no sea mayor a la fecha actual
@@ -121,7 +121,13 @@ class ArchivoValidator:
             logger.debug(f"La fecha {fecha_str} en el archivo {filename} es mayor a la fecha actual.")
             return False
 
-        logger.debug(f"El archivo {filename} cumple con la estructura de archivo general.")
+        logger.debug(
+            f"El archivo  cumple con la estructura de archivo general y la fecha en el nombre es válida.",
+            extra={"event_filename": {
+                "filename": filename,
+                "fecha_str": fecha_str,
+            }}
+        )
         return True
 
     @staticmethod
@@ -152,7 +158,7 @@ class ArchivoValidator:
             response = self.ssm_client.get_parameter(Name=parameter_name)
             parameter_data = json.loads(response['Parameter']['Value'])
             valid_states = parameter_data.get(env.VALID_STATES_FILES, [])
-            logger.debug(f"Cargando estados válidos: {valid_states}")
+            logger.debug(f"estados válidos: {valid_states}")
             return valid_states
         except ClientError as e:
             logger.error(f"Error al obtener el parámetro {parameter_name}: {e}")

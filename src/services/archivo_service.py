@@ -180,6 +180,7 @@ class ArchivoService:
             )
             sys.exit(1)
 
+    # TODO: Pendiente Eliminar.
     def get_estado_archivo(self, acg_nombre_archivo):
         """Obtiene el estado del archivo."""
         estado = self.archivo_repository.get_archivo_by_nombre_archivo(
@@ -197,7 +198,8 @@ class ArchivoService:
             acg_nombre_archivo, env.CONST_ESTADO_LOAD_RTA_PROCESSING, 0
         )
         logger.debug(
-            f"Se actualiza el estado del archivo especial {acg_nombre_archivo} a {env.CONST_ESTADO_LOAD_RTA_PROCESSING}"
+            f"Se actualiza el estado del archivo a {env.CONST_ESTADO_LOAD_RTA_PROCESSING}",
+            extra={"event_filename": file_name},
         )
         return new_file_key
 
@@ -310,55 +312,54 @@ class ArchivoService:
             self, file_name, bucket, receipt_handle, acg_nombre_archivo
     ):
         """Proceso de manejo de archivos generales."""
-        # Si el archivo no existe en la base de datos
-        acg_nombre_archivo = build_acg_name_if_general_file(acg_nombre_archivo)
-        if not self.archivo_repository.check_file_exists(acg_nombre_archivo):
-            error_message = (
-                "El archivo NO existe en la base de datos\n"
-                "===> Se eliminara el mensaje de la cola ... \n"
-                "===> Se movera el archivo a la carpeta de bucket/Rechazados ...\n"
-                "===> Se Eliminara el archivo del bucket/Recibidos ..."
-            )
-            logger.error(
-                error_message,
+        # 1. Validar la estructura del nombre del archivo
+        if self.archivo_validator.validate_filename_structure_for_general_file(file_name):
+            # 2. Construir el acg_nombre_archivo sin el prefijo ni la extensión para poder buscarlo en la base de datos
+            acg_nombre_archivo = build_acg_name_if_general_file(acg_nombre_archivo)
+            # 3. Verificar si el archivo existe en la base de datos
+            if not self.archivo_repository.check_file_exists(acg_nombre_archivo):
+                error_message = (
+                    "El archivo NO existe en la base de datos\n"
+                    "===> Se eliminara el mensaje de la cola ... \n"
+                    "===> Se movera el archivo a la carpeta de bucket/Rechazados ...\n"
+                    "===> Se Eliminara el archivo del bucket/Recibidos ..."
+                )
+                logger.error(
+                    error_message,
+                    extra={"event_filename": file_name}
+                )
+                self.error_handling_service.handle_file_error(
+                    id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
+                    filekey=f"{env.DIR_RECEPTION_FILES}/{file_name}",
+                    bucket=bucket,
+                    receipt_handle=receipt_handle,
+                    codigo_error=env.CONST_COD_ERROR_EMAIL,
+                    filename=file_name,
+                )
+                return
+            logger.debug(
+                f"El archivo existe en la base de datos.",
                 extra={"event_filename": file_name}
             )
-            self.error_handling_service.handle_file_error(
-                id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
-                filekey=f"{env.DIR_RECEPTION_FILES}/{file_name}",
-                bucket=bucket,
-                receipt_handle=receipt_handle,
-                codigo_error=env.CONST_COD_ERROR_EMAIL,
-                filename=file_name,
-            )
-            return
-        logger.debug(
-            f"El archivo existe en la base de datos.",
-            extra={"event_filename": file_name}
-        )
 
-        # Obtener y validar el estado del archivo
-        estado_archivo = self.archivo_repository.get_archivo_by_nombre_archivo(
-            acg_nombre_archivo
-        ).estado
-        if not self.archivo_validator.is_valid_state(estado_archivo):
-            self.error_handling_service.handle_file_error(
-                id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
-                filekey=f"{env.DIR_RECEPTION_FILES}/{file_name}",
-                bucket=bucket,
-                receipt_handle=receipt_handle,
-                codigo_error=env.CONST_COD_ERROR_EMAIL,
-                filename=file_name,
-            )
-            logger.error(
-                f"Estado del archivo general {file_name} no válido; mensaje eliminado."
-            )
-            return
+            # Obtener y validar el estado del archivo
+            estado_archivo = self.archivo_repository.get_archivo_by_nombre_archivo(
+                acg_nombre_archivo
+            ).estado
+            if not self.archivo_validator.is_valid_state(estado_archivo):
+                logger.error(
+                    f"Estado del archivo general no válido: {estado_archivo}",
+                    extra={"event_filename": file_name}
+                )
+                self.error_handling_service.handle_file_error(
+                    id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
+                    filekey=f"{env.DIR_RECEPTION_FILES}/{file_name}",
+                    bucket=bucket,
+                    receipt_handle=receipt_handle,
+                    codigo_error=env.CONST_COD_ERROR_EMAIL,
+                    filename=file_name,
+                )
+                return
 
-        self.s3_utils.move_file_to_procesando(bucket, file_name)
-        self.archivo_repository.update_estado_archivo(
-            acg_nombre_archivo, env.CONST_ESTADO_LOAD_RTA_PROCESSING, 0
-        )
-        logger.debug(
-            f"Estado del archivo general {file_name} actualizado a {env.CONST_ESTADO_LOAD_RTA_PROCESSING}."
-        )
+            # Mover el archivo a la carpeta de procesando
+            self.move_file_and_update_state(bucket, file_name, acg_nombre_archivo)

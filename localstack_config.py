@@ -94,6 +94,7 @@ queues = [
     "pro-responses-to-send",
     "pro-responses-to-upload",
     "pro-responses-to-consolidation",
+    "emails-to-send"
 ]
 for queue in queues:
     sqs_client.create_queue(QueueName=queue)
