@@ -1,5 +1,6 @@
 import json
 import unittest
+from fileinput import filename
 from unittest.mock import patch, MagicMock
 
 from src.config.config import env
@@ -212,29 +213,51 @@ class TestProcessSpecialFile(unittest.TestCase):
         self.service.unzip_file.assert_called_once()
         self.service.process_sqs_response.assert_called_once()
 
-    @patch("src.logs.logger")
-    def test_process_special_file_new_special_file(self, mock_logger):
-        """
-        Caso en el que el archivo es especial, pero no existe previamente.
-        """
-        # Configurar los mocks
-        self.service.archivo_repository.get_archivo_by_nombre_archivo.return_value.id_archivo = 123
-        self.service.archivo_validator.is_special_file.return_value = True
-        self.service.check_existing_special_file.return_value = False
+    class TestProcessSpecialFile(unittest.TestCase):
+        def __init__(self, methodName: str = "runTest"):
+            super().__init__(methodName)
+            self.service = None
 
-        # Datos de entrada
-        file_name = "RE_ESP_FILE.txt"
-        bucket = "test_bucket"
-        receipt_handle = "test_receipt_handle"
-        acg_nombre_archivo = "RE_ESP_FILE"
+        @patch(
+            "src.services.archivo_service.ArchivoService.insertar_archivo_nuevo_especial")
+        @patch("src.services.archivo_service.ArchivoService.archivo_repository")
+        @patch("src.services.archivo_service.ArchivoService.archivo_validator")
+        @patch("src.services.archivo_service.logger")
+        def test_process_special_file_new_special_file(
+                self,
+                mock_logger,
+                mock_archivo_validator,
+                mock_archivo_repository,
+                mock_insertar_archivo_nuevo_especial):
+            """
+            Caso en el que el archivo es especial, pero no existe previamente.
+            """
+            # Configurar los mocks
+            mock_archivo_validator.is_special_file.return_value = True
+            mock_archivo_repository.get_archivo_by_nombre_archivo.return_value.id_archivo = 123
+            self.service.check_existing_special_file.return_value = False
 
-        # Llamar a la función
-        self.service.process_special_file(file_name, bucket, receipt_handle, acg_nombre_archivo)
+            # Datos de entrada
+            file_name = "RE_ESP_FILE.txt"
+            bucket = "test_bucket"
+            receipt_handle = "test_receipt_handle"
+            acg_nombre_archivo = "RE_ESP_FILE"
+            file_key = f"{env.DIR_RECEPTION_FILES}/{file_name}"
 
-        # Verificar que se llamó a create_and_process_new_special_file
-        self.service.create_and_process_new_special_file.assert_called_once_with(
-            file_name, acg_nombre_archivo, bucket, receipt_handle
-        )
+            # Llamar a la función
+            self.service.process_special_file(file_name, bucket, receipt_handle, acg_nombre_archivo)
+
+            # Verificar que se llamó a insertar_archivo_nuevo_especial con los argumentos correctos
+            mock_insertar_archivo_nuevo_especial.assert_called_once_with(
+                bucket,
+                file_key,
+                file_name,
+                acg_nombre_archivo,
+                receipt_handle
+            )
+
+            # Verificar que logger.debug fue llamado para el mensaje correspondiente
+            mock_logger.debug.assert_called_with(f"El archivo especial {file_name} no existe en la base de datos.")
 
     @patch("src.logs.logger")
     def test_process_special_file_invalid_file(self, mock_logger):

@@ -112,30 +112,34 @@ class ArchivoService:
                     acg_nombre_archivo, bucket, receipt_handle
                 )
                 if estado:
-                    new_file_key = self.move_file_and_update_state(
-                        bucket, file_name, acg_nombre_archivo
-                    )
-                    self.insert_file_states_and_rta_processing(acg_nombre_archivo, estado, file_name)
-                    archivo_id = self.archivo_repository.get_archivo_by_nombre_archivo(
-                        acg_nombre_archivo
-                    ).id_archivo
-                    self.unzip_file(
-                        bucket,
-                        new_file_key,
-                        archivo_id,
-                        acg_nombre_archivo,
-                        0,
-                        receipt_handle,
-                        self.error_handling_service,
-                    )
-                    self.process_sqs_response(archivo_id, file_name, receipt_handle)
+                    # procesar archivo
+                    self.procesar_archivo(bucket, file_name, acg_nombre_archivo, estado, receipt_handle)
+                    # new_file_key = self.move_file_and_update_state(
+                    #     bucket, file_name, acg_nombre_archivo
+                    # )
+                    # self.insert_file_states_and_rta_processing(acg_nombre_archivo, estado, file_name)
+                    # archivo_id = self.archivo_repository.get_archivo_by_nombre_archivo(
+                    #     acg_nombre_archivo
+                    # ).id_archivo
+                    # self.unzip_file(
+                    #     bucket,
+                    #     new_file_key,
+                    #     archivo_id,
+                    #     acg_nombre_archivo,
+                    #     0,
+                    #     receipt_handle,
+                    #     self.error_handling_service,
+                    # )
+                    # self.process_sqs_response(archivo_id, file_name, receipt_handle)
             else:
                 logger.debug(
                     f"El archivo especial {file_name} no existe en la base de datos."
                 )
-                self.create_and_process_new_special_file(
-                    file_name, acg_nombre_archivo, bucket, receipt_handle
+                self.insertar_archivo_nuevo_especial(
+                    bucket, file_key=f"{env.DIR_RECEPTION_FILES}/{file_name}", filename=file_name,
+                    acg_nombre_archivo=acg_nombre_archivo, receipt_handle=receipt_handle
                 )
+                self.procesar_archivo(bucket, file_name, acg_nombre_archivo, env.CONST_ESTADO_SEND, receipt_handle)
         else:
             self.handle_invalid_special_file(file_name, bucket, receipt_handle)
 
@@ -340,47 +344,93 @@ class ArchivoService:
                     filename=file_name,
                 )
                 return
-            logger.debug(
-                f"El archivo existe en la base de datos.",
-                extra={"event_filename": file_name}
-            )
 
-            # Obtener y validar el estado del archivo
-            estado_archivo = self.archivo_repository.get_archivo_by_nombre_archivo(
-                acg_nombre_archivo
-            ).estado
-            if not self.archivo_validator.is_valid_state(estado_archivo):
-                logger.error(
-                    f"Estado del archivo general no válido: {estado_archivo}",
+            # verificar si el archivo existe en la base de datos
+            else:
+                logger.debug(
+                    f"El archivo existe en la base de datos.",
                     extra={"event_filename": file_name}
                 )
-                self.error_handling_service.handle_file_error(
-                    id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
-                    filekey=f"{env.DIR_RECEPTION_FILES}/{file_name}",
-                    bucket=bucket,
-                    receipt_handle=receipt_handle,
-                    codigo_error=env.CONST_COD_ERROR_EMAIL,
-                    filename=file_name,
-                )
-                return
 
-            # Mover el archivo a la carpeta de procesando
-            new_file_key = self.move_file_and_update_state(bucket, file_name, acg_nombre_archivo)
-            # Insertar estados del archivo en la base de datos y respuesta de procesamiento
-            self.insert_file_states_and_rta_processing(acg_nombre_archivo, estado_archivo, file_name)
-            # Descomprimir el archivo
-            self.unzip_file(
-                bucket,
-                new_file_key,
-                self.archivo_repository.get_archivo_by_nombre_archivo(acg_nombre_archivo).id_archivo,
-                acg_nombre_archivo,
-                0,
-                receipt_handle,
-                self.error_handling_service,
-            )
-            # Procesar la respuesta SQS
-            self.process_sqs_response(
-                self.archivo_repository.get_archivo_by_nombre_archivo(acg_nombre_archivo).id_archivo,
-                file_name,
-                receipt_handle,
-            )
+                # Obtener y validar el estado del archivo
+                estado_archivo = self.archivo_repository.get_archivo_by_nombre_archivo(
+                    acg_nombre_archivo
+                ).estado
+                if not self.archivo_validator.is_valid_state(estado_archivo):
+                    logger.error(
+                        f"Estado '{estado_archivo}' del archivo general no válido.",
+                    )
+                    self.error_handling_service.handle_file_error(
+                        id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
+                        filekey=f"{env.DIR_RECEPTION_FILES}/{file_name}",
+                        bucket=bucket,
+                        receipt_handle=receipt_handle,
+                        codigo_error=env.CONST_COD_ERROR_EMAIL,
+                        filename=file_name,
+                    )
+                    return
+                else:
+                    logger.debug(
+                        f"Estado '{estado_archivo}' del archivo general es válido.",
+                    )
+                    # procesar archivo.
+                    self.procesar_archivo(bucket, file_name, acg_nombre_archivo, estado_archivo, receipt_handle)
+
+    def insertar_archivo_nuevo_especial(self, bucket, file_key, filename, acg_nombre_archivo, receipt_handle):
+        """ Inserta un nuevo archivo especial en la base de datos y continúa con el procesamiento. """
+        new_archivo = CGDArchivo(
+            id_archivo=create_file_id(filename),
+            acg_nombre_archivo=acg_nombre_archivo,
+            tipo_archivo=env.CONST_TIPO_ARCHIVO_ESPECIAL,
+            estado=env.CONST_ESTADO_SEND,
+            plataforma_origen=env.CONST_PLATAFORMA_ORIGEN,
+            fecha_nombre_archivo=extract_date_from_filename(filename),
+            fecha_recepcion=datetime.now(),
+            contador_intentos_cargue=0,
+            contador_intentos_generacion=0,
+            contador_intentos_empaquetado=0,
+            nombre_archivo=filename.rsplit(".", 1)[0],
+            consecutivo_plataforma_origen=1,
+            fecha_ciclo=datetime.now(),
+            fecha_registro_resumen=extract_date_from_filename(filename),
+        )
+        self.archivo_repository.insert_archivo(new_archivo)
+        logger.debug(
+            f"Se inserta el archivo especial en la base de datos",
+            extra={"event_filename": filename}
+        )
+
+    def procesar_archivo(self, bucket, file_name, acg_nombre_archivo, estado_archivo, receipt_handle):
+        """
+        Procesa el archivo realizando una serie de operaciones:
+        - Mueve el archivo a la carpeta de procesando.
+        - Inserta los estados del archivo y la respuesta de procesamiento en la base de datos.
+        - Descomprime el archivo.
+        - Procesa la respuesta de SQS.
+        """
+
+        # procesar archivo
+        new_file_key = self.move_file_and_update_state(bucket, file_name, acg_nombre_archivo)
+
+        # Insertar estados del archivo en la base de datos y respuesta de procesamiento
+        self.insert_file_states_and_rta_processing(acg_nombre_archivo, estado_archivo, file_name)
+
+        # Descomprimir el archivo
+        archivo_id = self.archivo_repository.get_archivo_by_nombre_archivo(acg_nombre_archivo).id_archivo
+        self.unzip_file(
+            bucket,
+            new_file_key,
+            archivo_id,
+            acg_nombre_archivo,
+            0,
+            receipt_handle,
+            self.error_handling_service,
+        )
+
+        # Procesar la respuesta SQS
+        archivo_id = self.archivo_repository.get_archivo_by_nombre_archivo(acg_nombre_archivo).id_archivo
+        self.process_sqs_response(
+            archivo_id,
+            file_name,
+            receipt_handle,
+        )

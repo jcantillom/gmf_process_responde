@@ -240,7 +240,7 @@ class TestArchivoValidator(unittest.TestCase):
         result = self.validator.get_type_response(filename)
 
         # Verificar que devuelve "02"
-        self.assertEqual(result, env.CONST_TIPO_ARCHIVO_GENERAL)
+        self.assertEqual(result, env.CONST_TIPO_ARCHIVO_GENERAL_REINTEGROS)
 
     def test_get_type_response_general_file_without_R(self):
         """
@@ -252,7 +252,7 @@ class TestArchivoValidator(unittest.TestCase):
         result = self.validator.get_type_response(filename)
 
         # Verificar que devuelve "01"
-        self.assertEqual(result, env.CONST_TIPO_ARCHIVO_GENERAL_REINTEGROS)
+        self.assertEqual(result, env.CONST_TIPO_ARCHIVO_GENERAL)
 
     def test_get_type_response_error(self):
         """
