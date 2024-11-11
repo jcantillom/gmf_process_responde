@@ -114,23 +114,18 @@ class ArchivoService:
                 if estado:
                     # procesar archivo
                     self.procesar_archivo(bucket, file_name, acg_nombre_archivo, estado, receipt_handle)
-                    # new_file_key = self.move_file_and_update_state(
-                    #     bucket, file_name, acg_nombre_archivo
-                    # )
-                    # self.insert_file_states_and_rta_processing(acg_nombre_archivo, estado, file_name)
-                    # archivo_id = self.archivo_repository.get_archivo_by_nombre_archivo(
-                    #     acg_nombre_archivo
-                    # ).id_archivo
-                    # self.unzip_file(
-                    #     bucket,
-                    #     new_file_key,
-                    #     archivo_id,
-                    #     acg_nombre_archivo,
-                    #     0,
-                    #     receipt_handle,
-                    #     self.error_handling_service,
-                    # )
-                    # self.process_sqs_response(archivo_id, file_name, receipt_handle)
+                else:
+                    logger.error(
+                        f"El estado del archivo especial {file_name} no es válido."
+                    )
+                    self.error_handling_service.handle_file_error(
+                        id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
+                        filekey=f"{env.DIR_RECEPTION_FILES}/{file_name}",
+                        bucket=bucket,
+                        receipt_handle=receipt_handle,
+                        codigo_error=env.CONST_COD_ERROR_EMAIL,
+                        filename=file_name,
+                    )
             else:
                 logger.debug(
                     f"El archivo especial {file_name} no existe en la base de datos."
@@ -187,7 +182,7 @@ class ArchivoService:
             )
             sys.exit(1)
 
-    # TODO: Pendiente Eliminar.
+    # pendiente eliminar y elimuinar los test correspondientes.
     def get_estado_archivo(self, acg_nombre_archivo):
         """Obtiene el estado del archivo."""
         estado = self.archivo_repository.get_archivo_by_nombre_archivo(
