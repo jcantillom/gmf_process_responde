@@ -104,7 +104,3 @@ class TestLogger(unittest.TestCase):
         self.assertIn("[DEBUG]", formatted_message)
         self.assertIn("[test/path/to/file.py:42]", formatted_message)
         self.assertIn("- Mensaje de prueba", formatted_message)
-
-
-if __name__ == '__main__':
-    unittest.main()

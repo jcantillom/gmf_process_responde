@@ -41,7 +41,3 @@ class TestArchivoController(unittest.TestCase):
                 process_sqs_message(self.event, self.db_mock)
 
             self.assertIn("Error en el procesamiento del archivo", str(context.exception))
-
-
-if __name__ == '__main__':
-    unittest.main()

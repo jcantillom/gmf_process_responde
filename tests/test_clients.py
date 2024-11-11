@@ -107,7 +107,3 @@ class TestAWSClients(unittest.TestCase):
         secret = AWSClients.get_secret('test_secret')
         self.assertEqual(secret, {})
         mock_client.get_secret_value.assert_called_once_with(SecretId='test_secret')
-
-
-if __name__ == '__main__':
-    unittest.main()
