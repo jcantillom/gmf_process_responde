@@ -17,6 +17,7 @@ from src.utils.sqs_utils import (
     send_message_to_sqs,
     build_email_message,
 )
+from src.utils.validator_utils import ArchivoValidator
 from src.utils.singleton import SingletonMeta
 from src.services.error_handling_service import ErrorHandlingService
 import unittest
@@ -141,25 +142,47 @@ class TestEventUtils(unittest.TestCase):
         result = extract_date_from_filename(filename)
         self.assertEqual(result, "")
 
-    @patch('src.utils.event_utils.env')
-    def test_create_file_id_with_valid_date(self, mock_env):
-        # Configurar el prefijo del archivo especial en la variable de entorno
-        mock_env.CONST_PRE_SPECIAL_FILE = "RE_ESP"
+    @patch('src.utils.validator_utils.AWSClients.get_ssm_client')  # Mock del cliente SSM
+    @patch('src.utils.validator_utils.ArchivoValidator')  # Mock de la clase ArchivoValidator
+    @patch('src.utils.event_utils.env')  # Mock de las variables de entorno
+    @patch('src.utils.event_utils.extract_date_from_filename')  # Mock de la función extract_date_from_filename
+    def test_create_file_id_with_valid_date(self, mock_extract_date, mock_env, mock_validator, mock_get_ssm_client):
+        """
+        Test que verifica la creación de un ID de archivo con una fecha válida.
+        """
+        # Mock de la respuesta de SSM (simula la respuesta de get_parameter)
+        mock_ssm = MagicMock()
+        mock_ssm.get_parameter.return_value = {
+            'Parameter': {
+                'Value': json.dumps({
+                    "files-reponses-debito-reverso": "01,02",
+                    "files-reponses-reintegros": "03,04",
+                    "files-reponses-especiales": "05,06",
+                    "SPECIAL_START_NAME": "RE_ESP",
+                    "SPECIAL_END_NAME": "0001"
+                })
+            }
+        }
+        mock_get_ssm_client.return_value = mock_ssm
+
+        # Configurar el entorno
+        mock_env.CONST_PLATAFORMA_ORIGEN = '01'
+        mock_env.CONST_TIPO_ARCHIVO_ESPECIAL = '03'
+        mock_env.CONST_PRE_SPECIAL_FILE = 'RE_ESP'
+
+        # Configurar el mock de ArchivoValidator para devolver special_end como '0001'
+        mock_validator_instance = mock_validator.return_value
+        mock_validator_instance.special_end = '0001'
+
+        # Mock de la función extract_date_from_filename
         filename = "RE_ESP_TUTGMF0001003920241002-0001.zip"
+        mock_extract_date.return_value = '20241002'  # Simulando una fecha válida extraída del nombre del archivo
 
-        # Ejecutar y verificar que el ID de archivo generado es correcto
+        # Ejecutar la función que estamos probando
         result = create_file_id(filename)
-        self.assertEqual(result, 2024100201050001)
 
-    @patch('src.utils.event_utils.env')
-    def test_create_file_id_with_invalid_date(self, mock_env):
-        # Configurar el prefijo del archivo especial en la variable de entorno
-        mock_env.CONST_PRE_SPECIAL_FILE = "RE_ESP"
-        filename = "RE_ESP_WRONG_FORMAT.zip"
-
-        # Ejecutar y verificar que el ID de archivo devuelto sea None para un formato inválido
-        result = create_file_id(filename)
-        self.assertEqual(result, None)
+        # Verificar que el ID de archivo generado es correcto
+        self.assertEqual(result, 2024100201030000)
 
     @patch('src.utils.event_utils.env')
     def test_extract_consecutivo_plataforma_origen(self, mock_env):

@@ -64,7 +64,7 @@ def create_file_id(filename: str):
 
     componente1 = env.CONST_PLATAFORMA_ORIGEN
     componente2 = env.CONST_TIPO_ARCHIVO_ESPECIAL
-    componente3 = archivo_validator.special_end
+    componente3 = archivo_validator.special_end.zfill(4)
 
     return int(f"{date}{componente1}{componente2}{componente3}")
 
