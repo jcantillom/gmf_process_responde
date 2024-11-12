@@ -159,7 +159,7 @@ class S3Utils:
                 # si la cantidad de archivos descomprimidos no es igual a la cantidad esperada
                 if not contador_archivos_descomprimidos:
                     # handling error
-                    error_handling_service.handle_unzip_error(
+                    error_handling_service.handle_unexpected_file_count_error(
                         id_archivo=id_archivo,
                         filekey=file_key,
                         bucket_name=bucket_name,
@@ -181,7 +181,7 @@ class S3Utils:
                             extra={"event_filename": nombre_archivo_zip}
                         )
                         # handling error
-                        error_handling_service.handle_unzip_error(
+                        error_handling_service.handle_invalid_file_suffix_error(
                             id_archivo=id_archivo,
                             filekey=file_key,
                             bucket_name=bucket_name,
@@ -230,10 +230,20 @@ class S3Utils:
             )
             return destination_folder
 
-        except BadZipFile:
+        except (ConnectionError, IOError) as e:
+            self.logger.error(f"Error técnico al descomprimir el archivo {nombre_archivo}: {str(e)}",
+                              extra={"event_filename": nombre_archivo})
+            error_handling_service.handle_technical_unzip_error(
+                id_archivo=id_archivo,
+                filekey=file_key,
+                bucket_name=bucket_name,
+                receipt_handle=receipt_handle,
+                file_name=nombre_archivo,
+                contador_intentos_cargue=contador_intentos_cargue,
+            )
 
-            # handling error
-            error_handling_service.handle_unzip_error(
+        except BadZipFile:
+            error_handling_service.handle_corrupted_zip_file_error(
                 id_archivo=id_archivo,
                 filekey=file_key,
                 bucket_name=bucket_name,

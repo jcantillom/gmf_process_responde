@@ -21,7 +21,7 @@ class ErrorHandlingService:
         self.rta_procesamiento_repository = RtaProcesamientoRepository(db)
         self.archivo_repository = ArchivoRepository(db)
 
-    def handle_file_error(
+    def handle_file_error_general(
             self,
             id_plantilla: str,
             filekey: str,
@@ -33,7 +33,7 @@ class ErrorHandlingService:
         Realiza el manejo completo de un error de archivo:
         - Mueve el archivo a 'rechazados'
         - Elimina el mensaje de la cola
-        - Valida que el archivo no esté en estado 'procesado'
+        - Válida que el archivo no esté en estado 'procesado'
         - Envía un mensaje de error a la cola de SQS "emails-to-send"
         - Registra el error en el log.
         """
@@ -82,7 +82,7 @@ class ErrorHandlingService:
         # Enviar mensaje a SQS
         send_message_to_sqs(env.SQS_URL_EMAILS, message, filename)
 
-    def handle_unzip_error(
+    def handle_unexpected_file_count_error(
             self,
             id_archivo: int,
             filekey: str,
@@ -106,11 +106,110 @@ class ErrorHandlingService:
         )
 
         # llamamos al error_handling para enviar el mensaje de error
-        self.handle_file_error(
+        self.handle_file_error_general(
             id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
             filekey=filekey,
             bucket=bucket_name,
             receipt_handle=receipt_handle,
-            codigo_error=env.CONST_COD_ERROR_DECOMPRESION,
+            codigo_error=env.CONST_COD_ERROR_UNEXPECTED_FILE_COUNT,
+            filename=file_name,
+        )
+
+    def handle_invalid_file_suffix_error(
+            self,
+            id_archivo: int,
+            filekey: str,
+            bucket_name: str,
+            receipt_handle: str,
+            file_name: str,
+            contador_intentos_cargue: int,
+    ):
+
+        # actualiza el estado de CGD_RTA_PROCESAMIENTO a RECHAZADO
+        self.rta_procesamiento_repository.update_state_rta_procesamiento(
+            id_archivo=id_archivo,
+            estado=env.CONST_ESTADO_REJECTED
+        )
+
+        # actualiza el estado del archivo a PROCESAMIENTO_RECHAZADO
+        self.archivo_repository.update_estado_archivo(
+            file_name,
+            env.CONST_ESTADO_PROCESAMIENTO_RECHAZADO,
+            contador_intentos_cargue=contador_intentos_cargue,
+        )
+
+        # llamamos al error_handling para enviar el mensaje de error
+        self.handle_file_error_general(
+            id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
+            filekey=filekey,
+            bucket=bucket_name,
+            receipt_handle=receipt_handle,
+            codigo_error=env.CONST_COD_ERROR_INVALID_FILE_SUFFIX,
+            filename=file_name,
+        )
+
+    def handle_corrupted_zip_file_error(
+            self,
+            id_archivo: int,
+            filekey: str,
+            bucket_name: str,
+            receipt_handle: str,
+            file_name: str,
+            contador_intentos_cargue: int,
+    ):
+
+        # actualiza el estado de CGD_RTA_PROCESAMIENTO a RECHAZADO
+        self.rta_procesamiento_repository.update_state_rta_procesamiento(
+            id_archivo=id_archivo,
+            estado=env.CONST_ESTADO_REJECTED
+        )
+
+        # actualiza el estado del archivo a PROCESAMIENTO_RECHAZADO
+        self.archivo_repository.update_estado_archivo(
+            file_name,
+            env.CONST_ESTADO_PROCESAMIENTO_RECHAZADO,
+            contador_intentos_cargue=contador_intentos_cargue,
+        )
+
+        # llamamos al error_handling para enviar el mensaje de error
+        self.handle_file_error_general(
+            id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
+            filekey=filekey,
+            bucket=bucket_name,
+            receipt_handle=receipt_handle,
+            codigo_error=env.CONST_COD_ERROR_CORRUPTED_FILE,
+            filename=file_name,
+        )
+
+    def handle_technical_unzip_error(
+            self,
+            id_archivo: int,
+            filekey: str,
+            bucket_name: str,
+            receipt_handle: str,
+            file_name: str,
+            contador_intentos_cargue: int,
+    ):
+
+        # actualiza el estado de CGD_RTA_PROCESAMIENTO a RECHAZADO
+        self.rta_procesamiento_repository.update_state_rta_procesamiento(
+            id_archivo=id_archivo,
+            estado=env.CONST_ESTADO_REJECTED
+        )
+
+        # actualiza el estado del archivo a PROCESAMIENTO_RECHAZADO
+        self.archivo_repository.update_estado_archivo(
+            file_name,
+            env.CONST_ESTADO_PROCESAMIENTO_RECHAZADO,
+            contador_intentos_cargue=contador_intentos_cargue,
+        )
+
+        # llamamos al error_handling para enviar el mensaje de error
+        self.handle_file_error_general(
+            id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
+            filekey=filekey,
+            bucket=bucket_name,
+            receipt_handle=receipt_handle,
+            codigo_error=env.CONST_COD_ERROR_TECHNICAL_UNZIP,
             filename=file_name,
         )

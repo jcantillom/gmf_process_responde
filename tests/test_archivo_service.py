@@ -408,7 +408,7 @@ class TestValidarEstadoSpecialFile(unittest.TestCase):
         self.assertIsNone(result)
 
         # Verificar que se llamó al servicio de manejo de errores
-        self.service.error_handling_service.handle_file_error.assert_called_once()
+        self.service.error_handling_service.handle_file_error_general.assert_called_once()
 
     @patch("src.logs.logger")
     @patch("sys.exit")
@@ -767,7 +767,7 @@ class TestHandleInvalidSpecialFile(unittest.TestCase):
         self.service.handle_invalid_special_file(file_name, bucket, receipt_handle)
 
         # Verificar que se llamó a handle_file_error con los argumentos correctos
-        self.service.error_handling_service.handle_file_error.assert_called_once_with(
+        self.service.error_handling_service.handle_file_error_general.assert_called_once_with(
             id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
             filekey=file_key,
             bucket=bucket,
@@ -813,7 +813,7 @@ class TestProcessGeneralFile(unittest.TestCase):
         self.service.process_general_file(file_name, bucket, receipt_handle, acg_nombre_archivo)
 
         # Verificar que se llamó a handle_file_error
-        self.service.error_handling_service.handle_file_error.assert_called_once_with(
+        self.service.error_handling_service.handle_file_error_general.assert_called_once_with(
             id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
             filekey=f"{env.DIR_RECEPTION_FILES}/{file_name}",
             bucket=bucket,
@@ -842,7 +842,7 @@ class TestProcessGeneralFile(unittest.TestCase):
         self.service.process_general_file(file_name, bucket, receipt_handle, acg_nombre_archivo)
 
         # Verificar que se llamó a handle_file_error
-        self.service.error_handling_service.handle_file_error.assert_called_once_with(
+        self.service.error_handling_service.handle_file_error_general.assert_called_once_with(
             id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
             filekey=f"{env.DIR_RECEPTION_FILES}/{file_name}",
             bucket=bucket,
