@@ -228,6 +228,7 @@ class S3Utils:
                 queue_url=env.SQS_URL_PRO_RESPONSE_TO_UPLOAD,
                 destination_folder=destination_folder,
             )
+            return destination_folder
 
         except BadZipFile:
 

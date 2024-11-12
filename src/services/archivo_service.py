@@ -273,7 +273,7 @@ class ArchivoService:
         """
         Descomprime un archivo
         """
-        self.s3_utils.unzip_file_in_s3(
+        destination_folder = self.s3_utils.unzip_file_in_s3(
             bucket,
             new_file_key,
             int(archivo_id),
@@ -282,8 +282,17 @@ class ArchivoService:
             receipt_handle,
             error_handling_service,
         )
+        file_name = new_file_key.split("/")[-1]
 
-    def process_sqs_response(self, archivo_id, file_name, receipt_handle):
+        if destination_folder:
+            self.process_sqs_response(
+                archivo_id,
+                file_name,
+                receipt_handle,
+                destination_folder,
+            )
+
+    def process_sqs_response(self, archivo_id, file_name, receipt_handle, destination_folder=None):
         """Manejo de la respuesta SQS."""
         if self.rta_procesamiento_repository.is_estado_enviado(
                 int(archivo_id), file_name
@@ -295,7 +304,7 @@ class ArchivoService:
             message_body = {
                 "file_id": int(archivo_id),
                 "bucket_name": env.S3_BUCKET_NAME,
-                "folder_name": f"{env.DIR_RECEPTION_FILES}/{file_name}",
+                "folder_name": destination_folder,
                 "response_processing_id": int(
                     self.rta_procesamiento_repository.get_id_rta_procesamiento_by_id_archivo(
                         int(archivo_id), file_name
@@ -440,9 +449,9 @@ class ArchivoService:
         )
 
         # Procesar la respuesta SQS
-        archivo_id = self.archivo_repository.get_archivo_by_nombre_archivo(acg_nombre_archivo).id_archivo
-        self.process_sqs_response(
-            archivo_id,
-            file_name,
-            receipt_handle,
-        )
+        # archivo_id = self.archivo_repository.get_archivo_by_nombre_archivo(acg_nombre_archivo).id_archivo
+        # self.process_sqs_response(
+        #     archivo_id,
+        #     file_name,
+        #     receipt_handle,
+        # )

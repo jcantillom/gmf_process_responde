@@ -211,7 +211,6 @@ class TestProcessSpecialFile(unittest.TestCase):
         self.service.move_file_and_update_state.assert_called_once_with(bucket, file_name, acg_nombre_archivo)
         self.service.insert_file_states_and_rta_processing.assert_called_once_with(acg_nombre_archivo, True, file_name)
         self.service.unzip_file.assert_called_once()
-        self.service.process_sqs_response.assert_called_once()
 
     class TestProcessSpecialFile(unittest.TestCase):
         def __init__(self, methodName: str = "runTest"):
