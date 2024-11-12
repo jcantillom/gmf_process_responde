@@ -285,7 +285,6 @@ class ArchivoService:
 
     def process_sqs_response(self, archivo_id, file_name, receipt_handle):
         """Manejo de la respuesta SQS."""
-        print("file_name", file_name)
         if self.rta_procesamiento_repository.is_estado_enviado(
                 int(archivo_id), file_name
         ):

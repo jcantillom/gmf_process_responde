@@ -190,15 +190,19 @@ class S3Utils:
                             contador_intentos_cargue=contador_intentos_cargue,
                         )
 
-                    # Leer el contenido del archivo extraído
-                    with zip_file.open(file_info) as extracted_file:
-                        # Subir el archivo descomprimido a S3
-                        self.s3.upload_fileobj(
-                            extracted_file,
-                            Bucket=bucket_name,
-                            Key=extracted_file_key
-                        )
-                        self.logger.debug(f"Archivo descomprimido subido: {extracted_file_key}")
+                    else:
+                        # Leer el contenido del archivo extraído
+                        with zip_file.open(file_info) as extracted_file:
+                            # Subir el archivo descomprimido a S3
+                            self.logger.debug(
+                                f"Archivos extraídos: {[file_info.filename for file_info in zip_file.infolist()]}")
+                            extracted_file_key = f"{destination_folder}{file_info.filename}"
+                            self.s3.upload_fileobj(
+                                extracted_file,
+                                Bucket=bucket_name,
+                                Key=extracted_file_key
+                            )
+                            self.logger.debug(f"Archivo descomprimido subido a S3: {extracted_file_key}")
 
             # Eliminar el archivo .zip original
             self.s3.delete_object(Bucket=bucket_name, Key=file_key)
