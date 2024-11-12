@@ -51,7 +51,6 @@ class DataAccessLayer(metaclass=SingletonMeta):
             )()
 
             # create tables
-
             Base.metadata.create_all(self.engine)
 
             logger.info("Conexión a la base de datos establecida")

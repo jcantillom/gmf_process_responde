@@ -97,7 +97,7 @@ class ArchivoValidator:
             logger.debug(f"La fecha {fecha_str} en el archivo {filename} es mayor a la fecha actual.")
             return False
 
-        logger.debug(f"El archivo cumple con la estructura de archivo especial.",
+        logger.debug("El archivo cumple con la estructura de archivo especial.",
                      extra={"event_filename": {
                          "filename": filename,
                          "fecha_str": fecha_str,
@@ -127,7 +127,7 @@ class ArchivoValidator:
             return False
 
         logger.debug(
-            f"El archivo  cumple con la estructura de archivo general y la fecha en el nombre es válida.",
+            "El archivo  cumple con la estructura de archivo general y la fecha en el nombre es válida.",
             extra={"event_filename": {
                 "filename": filename,
                 "fecha_str": fecha_str,
@@ -194,7 +194,7 @@ class ArchivoValidator:
         elif filename.startswith(env.CONST_PRE_GENERAL_FILE):
             return env.CONST_TIPO_ARCHIVO_GENERAL
         else:
-            logger.error(f"El archivo no cumple con ninguna estructura de tipo de respuesta.",
+            logger.error("El archivo no cumple con ninguna estructura de tipo de respuesta.",
                          extra={"event_filename": {"filename": filename}})
 
     def is_valid_extracted_filename(self, extracted_filename: str, tipo_respuesta: str,

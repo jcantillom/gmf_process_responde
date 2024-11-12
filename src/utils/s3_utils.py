@@ -96,12 +96,12 @@ class S3Utils:
                 CopySource={'Bucket': bucket_name, 'Key': source_key},
                 Key=destination_key
             )
-            self.logger.debug(f"Archivo movido a la carpeta Procesando",
+            self.logger.debug("Archivo movido a la carpeta Procesando",
                               extra={"event_filename": file_name})
 
             # Eliminar el archivo original de la carpeta Recibidos
             self.s3.delete_object(Bucket=bucket_name, Key=source_key)
-            self.logger.debug(f"Archivo original eliminado",
+            self.logger.debug("Archivo original eliminado",
                               extra={"event_filename": file_name})
 
             return destination_key

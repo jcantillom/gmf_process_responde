@@ -131,8 +131,8 @@ class ArchivoService:
                     f"El archivo especial {file_name} no existe en la base de datos."
                 )
                 self.insertar_archivo_nuevo_especial(
-                    bucket, file_key=f"{env.DIR_RECEPTION_FILES}/{file_name}", filename=file_name,
-                    acg_nombre_archivo=acg_nombre_archivo, receipt_handle=receipt_handle
+                    filename=file_name,
+                    acg_nombre_archivo=acg_nombre_archivo
                 )
                 self.procesar_archivo(bucket, file_name, acg_nombre_archivo, env.CONST_ESTADO_SEND, receipt_handle)
         else:
@@ -145,7 +145,7 @@ class ArchivoService:
         )
         if exists:
             logger.warning(
-                f"El archivo especial ya existe en la base de datos",
+                "El archivo especial ya existe en la base de datos",
                 extra={"event_filename": acg_nombre_archivo},
             )
         return exists
@@ -232,10 +232,13 @@ class ArchivoService:
             extra={"event_filename": file_name},
         )
 
+        next_id_rta_procesamiento = self.get_next_id_rta_procesamiento(int(archivo_id))
+
         # Insertar en CGD_RTA_PROCESAMIENTO
         type_response = self.archivo_validator.get_type_response(file_name)
         self.rta_procesamiento_repository.insert_rta_procesamiento(
             id_archivo=int(archivo_id),
+            id_rta_procesamiento=next_id_rta_procesamiento,
             nombre_archivo_zip=file_name,
             tipo_respuesta=type_response,
             estado=env.CONST_ESTADO_INICIADO,
@@ -244,6 +247,18 @@ class ArchivoService:
         logger.debug(
             f"Se inserta la respuesta de procesamiento del archivo especial {file_name} en CGD_RTA_PROCESAMIENTO"
         )
+
+    def get_next_id_rta_procesamiento(self, id_archivo):
+        """Obtiene el siguiente id_rta_procesamiento para un id_archivo dado."""
+        # Obtener el último id_rta_procesamiento para el archivo con id_archivo dado
+        last_rta = self.rta_procesamiento_repository.get_last_rta_procesamiento(id_archivo)
+
+        # Si no existe ningún registro, empezar desde 1
+        if last_rta is None:
+            return 1
+        else:
+
+            return last_rta.id_rta_procesamiento + 1
 
     def unzip_file(
             self,
@@ -338,12 +353,12 @@ class ArchivoService:
                     codigo_error=env.CONST_COD_ERROR_EMAIL,
                     filename=file_name,
                 )
-                return
+
 
             # verificar si el archivo existe en la base de datos
             else:
                 logger.debug(
-                    f"El archivo existe en la base de datos.",
+                    "El archivo existe en la base de datos.",
                     extra={"event_filename": file_name}
                 )
 
@@ -363,7 +378,7 @@ class ArchivoService:
                         codigo_error=env.CONST_COD_ERROR_EMAIL,
                         filename=file_name,
                     )
-                    return
+
                 else:
                     logger.debug(
                         f"Estado '{estado_archivo}' del archivo general es válido.",
@@ -371,7 +386,7 @@ class ArchivoService:
                     # procesar archivo.
                     self.procesar_archivo(bucket, file_name, acg_nombre_archivo, estado_archivo, receipt_handle)
 
-    def insertar_archivo_nuevo_especial(self, bucket, file_key, filename, acg_nombre_archivo, receipt_handle):
+    def insertar_archivo_nuevo_especial(self, filename, acg_nombre_archivo):
         """ Inserta un nuevo archivo especial en la base de datos y continúa con el procesamiento. """
         new_archivo = CGDArchivo(
             id_archivo=create_file_id(filename),
@@ -391,7 +406,7 @@ class ArchivoService:
         )
         self.archivo_repository.insert_archivo(new_archivo)
         logger.debug(
-            f"Se inserta el archivo especial en la base de datos",
+            "Se inserta el archivo especial en la base de datos",
             extra={"event_filename": filename}
         )
 

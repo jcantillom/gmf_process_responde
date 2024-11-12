@@ -594,6 +594,10 @@ class TestInsertFileStates(unittest.TestCase):
         estado = "EN_PROCESO"
         file_name = "RE_ESP_FILE.zip"
 
+        # Simular que get_last_rta_procesamiento devuelve el último id_rta_procesamiento
+        self.service.rta_procesamiento_repository.get_last_rta_procesamiento.return_value = MagicMock(
+            id_rta_procesamiento=1)
+
         # Llamar a la función
         self.service.insert_file_states_and_rta_processing(acg_nombre_archivo, estado, file_name)
 
@@ -611,6 +615,7 @@ class TestInsertFileStates(unittest.TestCase):
         # Verificar que se insertó en CGD_RTA_PROCESAMIENTO
         self.service.rta_procesamiento_repository.insert_rta_procesamiento.assert_called_once_with(
             id_archivo=archivo_id,
+            id_rta_procesamiento=2,
             nombre_archivo_zip=file_name,
             tipo_respuesta=type_response,
             estado=env.CONST_ESTADO_INICIADO,

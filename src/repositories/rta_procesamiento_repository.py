@@ -34,6 +34,7 @@ class RtaProcesamientoRepository:
     def insert_rta_procesamiento(
             self,
             id_archivo: int,
+            id_rta_procesamiento: int,
             nombre_archivo_zip: str,
             tipo_respuesta: str,
             estado: str,
@@ -44,17 +45,20 @@ class RtaProcesamientoRepository:
         Inserta una nueva respuesta de procesamiento en la tabla 'cgd_rta_procesamiento'.
 
         :param id_archivo: ID del archivo.
+        :param id_rta_procesamiento: ID de la respuesta de procesamiento.
         :param nombre_archivo_zip: Nombre del archivo ZIP.
         :param tipo_respuesta: Tipo de respuesta.
         :param estado: Estado de la respuesta.
         :param contador_intentos_cargue: Contador de intentos de cargue.
         :param codigo_error: Código de error. Por defecto, es None.
         :param detalle_error: Detalle del error. Por defecto, es None.
+
         """
         fecha_recepcion = datetime.now()
 
         nueva_rta_procesamiento = CGDRtaProcesamiento(
             id_archivo=id_archivo,
+            id_rta_procesamiento=id_rta_procesamiento,
             nombre_archivo_zip=nombre_archivo_zip,
             tipo_respuesta=tipo_respuesta,
             fecha_recepcion=fecha_recepcion,
@@ -145,3 +149,20 @@ class RtaProcesamientoRepository:
         ).first()
 
         return result.id_rta_procesamiento if result else None
+
+    def get_last_rta_procesamiento(self, id_archivo: int):
+        """
+        Obtiene el último id_rta_procesamiento para un id_archivo dado.
+
+        Args:
+            id_archivo (int): El id_archivo para el que obtener el último id_rta_procesamiento.
+
+        Returns:
+            CGDRtaProcesamiento: El último registro de id_rta_procesamiento para el id_archivo dado.
+        """
+        # Realizamos una consulta para obtener el último id_rta_procesamiento para el id_archivo
+        last_rta_procesamiento = self.db.query(CGDRtaProcesamiento).filter(
+            CGDRtaProcesamiento.id_archivo == id_archivo
+        ).order_by(CGDRtaProcesamiento.id_rta_procesamiento.desc()).first()
+
+        return last_rta_procesamiento

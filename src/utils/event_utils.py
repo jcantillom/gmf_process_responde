@@ -58,7 +58,7 @@ def create_file_id(filename: str):
     date = extract_date_from_filename(filename)
 
     if not date:
-        logger.error(f"Fecha no encontrada en el nombre del archivo",
+        logger.error("Fecha no encontrada en el nombre del archivo",
                      extra={"filename": filename})
         return
 
