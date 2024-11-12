@@ -55,7 +55,7 @@ class CGDRtaProArchivosService:
         for file in pending_files:
             message_body = {
                 "bucket_name": env.S3_BUCKET_NAME,
-                "folder_name": destination_folder,
+                "folder_name": destination_folder.rstrip("/"),
                 "file_name": file.nombre_archivo,
                 "file_id": int(file.id_archivo),
                 "response_processing_id": int(file.id_rta_procesamiento),

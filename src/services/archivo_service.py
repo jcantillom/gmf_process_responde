@@ -285,6 +285,7 @@ class ArchivoService:
 
     def process_sqs_response(self, archivo_id, file_name, receipt_handle):
         """Manejo de la respuesta SQS."""
+        print("file_name", file_name)
         if self.rta_procesamiento_repository.is_estado_enviado(
                 int(archivo_id), file_name
         ):
@@ -294,6 +295,8 @@ class ArchivoService:
         else:
             message_body = {
                 "file_id": int(archivo_id),
+                "bucket_name": env.S3_BUCKET_NAME,
+                "folder_name": f"{env.DIR_RECEPTION_FILES}/{file_name}",
                 "response_processing_id": int(
                     self.rta_procesamiento_repository.get_id_rta_procesamiento_by_id_archivo(
                         int(archivo_id), file_name
