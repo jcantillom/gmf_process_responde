@@ -107,13 +107,14 @@ class ArchivoValidator:
     def validate_filename_structure_for_general_file(self, filename: str) -> bool:
         """
         Verifica si el archivo cumple con la estructura del nombre definida para archivos generales.
+        Ahora también acepta nombres de archivo que terminan en '-R'.
         """
         # Remueve el sufijo .zip si está presente
         if filename.endswith(".zip"):
             filename = filename[:-4]
 
-        # Definir el patrón de archivo general
-        expected_pattern = f"^{self.general_start}(\\d{{8}})-\\d{{4}}$"
+        # Definir el patrón de archivo general, permitiendo '-R' opcionalmente
+        expected_pattern = f"^{self.general_start}(\\d{{8}})-\\d{{4}}(-R)?$"
 
         match = re.match(expected_pattern, filename)
         if not match:
@@ -127,7 +128,7 @@ class ArchivoValidator:
             return False
 
         logger.debug(
-            "El archivo  cumple con la estructura de archivo general y la fecha en el nombre es válida.",
+            "El archivo cumple con la estructura de archivo general y la fecha en el nombre es válida.",
             extra={"event_filename": {
                 "filename": filename,
                 "fecha_str": fecha_str,

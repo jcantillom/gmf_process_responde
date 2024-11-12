@@ -1,6 +1,6 @@
 from src.models.cgd_rta_procesamiento import CGDRtaProcesamiento
 from .archivo_repository import ArchivoRepository
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session
 from src.utils.validator_utils import ArchivoValidator
 from src.config.config import env
@@ -54,7 +54,9 @@ class RtaProcesamientoRepository:
         :param detalle_error: Detalle del error. Por defecto, es None.
 
         """
-        fecha_recepcion = datetime.now()
+        # Definir la zona horaria de Colombia (UTC-5)
+        colombia_tz = timezone(timedelta(hours=-5))
+        fecha_recepcion = datetime.now(colombia_tz)
 
         nueva_rta_procesamiento = CGDRtaProcesamiento(
             id_archivo=id_archivo,

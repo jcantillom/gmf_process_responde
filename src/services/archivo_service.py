@@ -448,10 +448,3 @@ class ArchivoService:
             self.error_handling_service,
         )
 
-        # Procesar la respuesta SQS
-        # archivo_id = self.archivo_repository.get_archivo_by_nombre_archivo(acg_nombre_archivo).id_archivo
-        # self.process_sqs_response(
-        #     archivo_id,
-        #     file_name,
-        #     receipt_handle,
-        # )

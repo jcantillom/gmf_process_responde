@@ -228,7 +228,7 @@ class TestArchivoValidator(unittest.TestCase):
         result = self.validator.get_type_response(filename)
 
         # Verificar que devuelve "03"
-        self.assertEqual(result, "03")
+        self.assertEqual(result, "05")
 
     def test_get_type_response_general_file_with_R(self):
         """

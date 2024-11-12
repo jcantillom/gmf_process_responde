@@ -119,7 +119,7 @@ class S3Utils:
             contador_intentos_cargue: int,
             receipt_handle: str,
             error_handling_service
-    ) -> None:
+    ) :
         """
         Descomprime un archivo .zip en S3 y sube el contenido descomprimido a una carpeta
         con el nombre del archivo y un timestamp actual.
@@ -242,7 +242,7 @@ class S3Utils:
                 contador_intentos_cargue=contador_intentos_cargue,
             )
             self.logger.error("Error al descomprimir el archivo .zip", extra={"event_filename": nombre_archivo})
-            return
+            return None
 
     def get_cantidad_de_archivos_esperados_en_el_zip(self, id_archivo, nombre_archivo):
         tipo_respuesta = self.rta_procesamiento_repository.get_tipo_respuesta(id_archivo)
