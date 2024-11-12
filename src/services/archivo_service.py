@@ -399,6 +399,10 @@ class ArchivoService:
 
     def insertar_archivo_nuevo_especial(self, filename, acg_nombre_archivo):
         """ Inserta un nuevo archivo especial en la base de datos y continúa con el procesamiento. """
+        # Obtener la hora de Colombia (UTC-5)
+        colombia_tz = timezone(timedelta(hours=-5))
+        current_time = datetime.now(colombia_tz)
+
         new_archivo = CGDArchivo(
             id_archivo=create_file_id(filename),
             acg_nombre_archivo=acg_nombre_archivo,
@@ -406,14 +410,13 @@ class ArchivoService:
             estado=env.CONST_ESTADO_SEND,
             plataforma_origen=env.CONST_PLATAFORMA_ORIGEN,
             fecha_nombre_archivo=extract_date_from_filename(filename),
-            fecha_recepcion=datetime.now(),
+            fecha_recepcion=current_time,
             contador_intentos_cargue=0,
             contador_intentos_generacion=0,
             contador_intentos_empaquetado=0,
             nombre_archivo=filename.rsplit(".", 1)[0],
             consecutivo_plataforma_origen=1,
             fecha_ciclo=datetime.now(),
-            fecha_registro_resumen=extract_date_from_filename(filename),
         )
         self.archivo_repository.insert_archivo(new_archivo)
         logger.debug(
