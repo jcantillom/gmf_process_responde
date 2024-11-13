@@ -1,7 +1,8 @@
 from src.models.cgd_rta_procesamiento import CGDRtaProcesamiento
+from src.models.cgd_rta_pro_archivos import CGDRtaProArchivos
 from .archivo_repository import ArchivoRepository
 from datetime import datetime, timezone, timedelta
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, aliased
 from src.utils.validator_utils import ArchivoValidator
 from src.config.config import env
 
@@ -136,19 +137,36 @@ class RtaProcesamientoRepository:
             .first()
         return last_entry.estado == env.CONST_ESTADO_SEND if last_entry else False
 
+    def get_last_rta_procesamiento_without_archivos(self, id_archivo: int, nombre_archivo_zip: str) -> int:
+        """
+        Obtiene el id_rta_procesamiento de la tabla CGD_RTA_PROCESAMIENTO basado en
+        el id_archivo y nombre_archivo_zip Y QUE NO TENGA REGISTRO EN CGD_RTA_PRO_ARCHIVOS.
+        """
+
+        result = self.db.query(CGDRtaProcesamiento.id_rta_procesamiento).join(
+            CGDRtaProArchivos,
+            (CGDRtaProcesamiento.id_archivo == CGDRtaProArchivos.id_archivo) & (
+                    CGDRtaProcesamiento.id_rta_procesamiento == CGDRtaProArchivos.id_rta_procesamiento),
+            isouter=True
+        ).filter(
+            CGDRtaProcesamiento.id_archivo == id_archivo,
+            CGDRtaProcesamiento.nombre_archivo_zip == nombre_archivo_zip).filter(
+            CGDRtaProArchivos.id_rta_procesamiento == None).order_by(
+            CGDRtaProcesamiento.id_rta_procesamiento.desc()
+        ).first()
+
+        return result.id_rta_procesamiento if result else None
+
     def get_id_rta_procesamiento_by_id_archivo(self, id_archivo: int, nombre_archivo_zip: str) -> int:
         """
         Obtiene el id_rta_procesamiento de la tabla CGD_RTA_PROCESAMIENTO basado en
         el id_archivo y nombre_archivo_zip.
-
-        Returns:
-            int: El id_rta_procesamiento si se encuentra, None en caso contrario.
         """
 
         result = self.db.query(CGDRtaProcesamiento.id_rta_procesamiento).filter(
             CGDRtaProcesamiento.id_archivo == id_archivo,
-            CGDRtaProcesamiento.nombre_archivo_zip == nombre_archivo_zip
-        ).first()
+            CGDRtaProcesamiento.nombre_archivo_zip == nombre_archivo_zip).order_by(
+            CGDRtaProcesamiento.id_rta_procesamiento.desc()).first()
 
         return result.id_rta_procesamiento if result else None
 

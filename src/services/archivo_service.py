@@ -301,15 +301,14 @@ class ArchivoService:
                 receipt_handle, env.SQS_URL_PRO_RESPONSE_TO_PROCESS, file_name
             )
         else:
+            id_rta_procesamiento = self.rta_procesamiento_repository.get_id_rta_procesamiento_by_id_archivo(
+                int(archivo_id), file_name
+            )
             message_body = {
                 "file_id": int(archivo_id),
                 "bucket_name": env.S3_BUCKET_NAME,
                 "folder_name": destination_folder,
-                "response_processing_id": int(
-                    self.rta_procesamiento_repository.get_id_rta_procesamiento_by_id_archivo(
-                        int(archivo_id), file_name
-                    )
-                ),
+                "response_processing_id": int(id_rta_procesamiento),
             }
             send_message_to_sqs(
                 env.SQS_URL_PRO_RESPONSE_TO_CONSOLIDATE, message_body, file_name
@@ -450,4 +449,3 @@ class ArchivoService:
             receipt_handle,
             self.error_handling_service,
         )
-

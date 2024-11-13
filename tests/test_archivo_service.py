@@ -721,7 +721,7 @@ class TestProcessSqsResponse(unittest.TestCase):
         """
         # Configurar los mocks
         self.service.rta_procesamiento_repository.is_estado_enviado.return_value = False
-        self.service.rta_procesamiento_repository.get_id_rta_procesamiento_by_id_archivo.return_value = 456
+        self.service.rta_procesamiento_repository.get_last_rta_procesamiento_without_archivos.return_value = 456
 
         # Datos de entrada
         archivo_id = 123
@@ -847,7 +847,7 @@ class TestProcessGeneralFile(unittest.TestCase):
             filekey=f"{env.DIR_RECEPTION_FILES}/{file_name}",
             bucket=bucket,
             receipt_handle=receipt_handle,
-            codigo_error=env.CONST_COD_ERROR_EMAIL,
+            codigo_error=env.CONST_COD_ERROR_STATE_FILE,
             filename=file_name,
         )
 
