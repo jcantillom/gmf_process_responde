@@ -118,12 +118,12 @@ class ArchivoService:
                     logger.error(
                         f"El estado del archivo especial {file_name} no es válido."
                     )
-                    self.error_handling_service.handle_file_error_general(
+                    self.error_handling_service.handle_error_master(
                         id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
                         filekey=f"{env.DIR_RECEPTION_FILES}/{file_name}",
                         bucket=bucket,
                         receipt_handle=receipt_handle,
-                        codigo_error=env.CONST_COD_ERROR_EMAIL,
+                        codigo_error=env.CONST_COD_ERROR_STATE_FILE,
                         filename=file_name,
                     )
             else:
@@ -162,12 +162,12 @@ class ArchivoService:
                     f" El estado {estado} del archivo especial no es válido ",
                     extra={"event_filename": file_name},
                 )
-                self.error_handling_service.handle_file_error_general(
+                self.error_handling_service.handle_error_master(
                     id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
                     filekey=env.DIR_RECEPTION_FILES + "/" + file_name,
                     bucket=bucket,
                     receipt_handle=receipt_handle,
-                    codigo_error=env.CONST_COD_ERROR_EMAIL,
+                    codigo_error=env.CONST_COD_ERROR_STATE_FILE,
                     filename=file_name,
                 )
             else:
@@ -324,12 +324,12 @@ class ArchivoService:
     def handle_invalid_special_file(self, file_name, bucket, receipt_handle):
         """Maneja archivos especiales con formato incorrecto."""
         file_key = f"{env.DIR_RECEPTION_FILES}/{file_name}"
-        self.error_handling_service.handle_file_error_general(
+        self.error_handling_service.handle_error_master(
             id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
             filekey=file_key,
             bucket=bucket,
             receipt_handle=receipt_handle,
-            codigo_error=env.CONST_COD_ERROR_EMAIL,
+            codigo_error=env.CONST_COD_ERROR_STRUCTURE_NAME_FILE,
             filename=file_name,
         )
         logger.error(
@@ -356,12 +356,12 @@ class ArchivoService:
                     error_message,
                     extra={"event_filename": file_name}
                 )
-                self.error_handling_service.handle_file_error_general(
+                self.error_handling_service.handle_error_master(
                     id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
                     filekey=f"{env.DIR_RECEPTION_FILES}/{file_name}",
                     bucket=bucket,
                     receipt_handle=receipt_handle,
-                    codigo_error=env.CONST_COD_ERROR_EMAIL,
+                    codigo_error=env.CONST_COD_ERROR_NOT_EXISTS_FILE,
                     filename=file_name,
                 )
 
@@ -381,12 +381,12 @@ class ArchivoService:
                     logger.error(
                         f"Estado '{estado_archivo}' del archivo general no válido.",
                     )
-                    self.error_handling_service.handle_file_error_general(
+                    self.error_handling_service.handle_error_master(
                         id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
                         filekey=f"{env.DIR_RECEPTION_FILES}/{file_name}",
                         bucket=bucket,
                         receipt_handle=receipt_handle,
-                        codigo_error=env.CONST_COD_ERROR_EMAIL,
+                        codigo_error=env.CONST_COD_ERROR_STATE_FILE,
                         filename=file_name,
                     )
 

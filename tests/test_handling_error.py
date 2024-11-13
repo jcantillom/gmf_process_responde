@@ -70,7 +70,7 @@ class TestErrorHandlingService(unittest.TestCase):
         self.service.archivo_validator.is_not_processed_state.return_value = True
 
         # Ejecutar la función que se está probando
-        self.service.handle_file_error_general(id_plantilla, filekey, bucket, receipt_handle, codigo_error, filename)
+        self.service.handle_error_master(id_plantilla, filekey, bucket, receipt_handle, codigo_error, filename)
 
         # Verificar que se movió el archivo a la carpeta de rechazados
         self.service.s3_utils.move_file_to_rechazados.assert_called_once_with(bucket, filekey)

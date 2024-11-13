@@ -21,7 +21,7 @@ class ErrorHandlingService:
         self.rta_procesamiento_repository = RtaProcesamientoRepository(db)
         self.archivo_repository = ArchivoRepository(db)
 
-    def handle_file_error_general(
+    def handle_error_master(
             self,
             id_plantilla: str,
             filekey: str,
@@ -106,7 +106,7 @@ class ErrorHandlingService:
         )
 
         # llamamos al error_handling para enviar el mensaje de error
-        self.handle_file_error_general(
+        self.handle_error_master(
             id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
             filekey=filekey,
             bucket=bucket_name,
@@ -139,7 +139,7 @@ class ErrorHandlingService:
         )
 
         # llamamos al error_handling para enviar el mensaje de error
-        self.handle_file_error_general(
+        self.handle_error_master(
             id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
             filekey=filekey,
             bucket=bucket_name,
@@ -172,7 +172,7 @@ class ErrorHandlingService:
         )
 
         # llamamos al error_handling para enviar el mensaje de error
-        self.handle_file_error_general(
+        self.handle_error_master(
             id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
             filekey=filekey,
             bucket=bucket_name,
@@ -205,11 +205,77 @@ class ErrorHandlingService:
         )
 
         # llamamos al error_handling para enviar el mensaje de error
-        self.handle_file_error_general(
+        self.handle_error_master(
             id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
             filekey=filekey,
             bucket=bucket_name,
             receipt_handle=receipt_handle,
             codigo_error=env.CONST_COD_ERROR_TECHNICAL_UNZIP,
+            filename=file_name,
+        )
+
+    def handle_state_file_error(
+            self,
+            id_archivo: int,
+            filekey: str,
+            bucket_name: str,
+            receipt_handle: str,
+            file_name: str,
+            contador_intentos_cargue: int,
+    ):
+
+        # actualiza el estado de CGD_RTA_PROCESAMIENTO a RECHAZADO
+        self.rta_procesamiento_repository.update_state_rta_procesamiento(
+            id_archivo=id_archivo,
+            estado=env.CONST_ESTADO_REJECTED
+        )
+
+        # actualiza el estado del archivo a PROCESAMIENTO_RECHAZADO
+        self.archivo_repository.update_estado_archivo(
+            file_name,
+            env.CONST_ESTADO_PROCESAMIENTO_RECHAZADO,
+            contador_intentos_cargue=contador_intentos_cargue,
+        )
+
+        # llamamos al error_handling para enviar el mensaje de error
+        self.handle_error_master(
+            id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
+            filekey=filekey,
+            bucket=bucket_name,
+            receipt_handle=receipt_handle,
+            codigo_error=env.CONST_COD_ERROR_STATE_FILE,
+            filename=file_name,
+        )
+
+    def handle_not_exist_error(
+            self,
+            id_archivo: int,
+            filekey: str,
+            bucket_name: str,
+            receipt_handle: str,
+            file_name: str,
+            contador_intentos_cargue: int,
+    ):
+
+        # actualiza el estado de CGD_RTA_PROCESAMIENTO a RECHAZADO
+        self.rta_procesamiento_repository.update_state_rta_procesamiento(
+            id_archivo=id_archivo,
+            estado=env.CONST_ESTADO_REJECTED
+        )
+
+        # actualiza el estado del archivo a PROCESAMIENTO_RECHAZADO
+        self.archivo_repository.update_estado_archivo(
+            file_name,
+            env.CONST_ESTADO_PROCESAMIENTO_RECHAZADO,
+            contador_intentos_cargue=contador_intentos_cargue,
+        )
+
+        # llamamos al error_handling para enviar el mensaje de error
+        self.handle_error_master(
+            id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
+            filekey=filekey,
+            bucket=bucket_name,
+            receipt_handle=receipt_handle,
+            codigo_error=env.CONST_COD_ERROR_STATE_FILE,
             filename=file_name,
         )
