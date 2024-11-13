@@ -2,6 +2,7 @@ from .config import env
 from src.connection.database import DataAccessLayer
 from src.controllers.archivo_controller import process_sqs_message
 from src.logs.logger import get_logger
+from ..utils.sqs_utils import send_message_to_sqs
 
 if env.APP_ENV == "local":
     from local.load_event import load_local_event, logger
@@ -27,4 +28,5 @@ def initialize_lambda(event, context):
         log.info("Proceso de Lambda completado")
     except Exception as e:
         log.error(f"Error al inicializar la Lambda: {e}")
+        send_message_to_sqs(env.SQS_URL_PRO_RESPONSE_TO_PROCESS, event, "Reintento Fallido")
         raise e

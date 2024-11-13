@@ -50,6 +50,20 @@ class ArchivoValidator:
             return "", "", "", {}
 
     @staticmethod
+    def get_retry_parameters(parameter_name: str) -> dict:
+        """
+        Obtiene los parámetros de configuración de reintentos desde Parameter Store.
+        """
+        try:
+            ssm_client = AWSClients.get_ssm_client()
+            response = ssm_client.get_parameter(Name=parameter_name, WithDecryption=True)
+            parameter_data = json.loads(response['Parameter']['Value'])
+            return parameter_data
+        except ClientError as e:
+            logger.error(f"Error al obtener el parámetro  de reintento {parameter_name}: {e}")
+            return {"number-retries": "5", "time-between-retry": "900"}
+
+    @staticmethod
     def is_special_prefix(filename: str) -> bool:
         """
         Verifica si el archivo tiene el prefijo especial.
