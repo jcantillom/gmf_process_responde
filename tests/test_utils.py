@@ -520,7 +520,7 @@ class TestS3UtilsZip(unittest.TestCase):
         )
 
         # Verificar que se manejó el error adecuadamente
-        self.error_handling_service.handle_corrupted_zip_file_error.assert_called_once()
+        self.error_handling_service.handle_generic_error.assert_called_once()
 
     def test_unzip_file_in_s3_invalid_filename_structure(self):
         # Configurar el mock para devolver un archivo zip válido con nombres incorrectos
@@ -556,4 +556,4 @@ class TestS3UtilsZip(unittest.TestCase):
         )
 
         # Verificar que se manejó el error de cantidad de archivos inesperada
-        self.error_handling_service.handle_unexpected_file_count_error.assert_called_once()
+        self.error_handling_service.handle_generic_error.assert_called_once()

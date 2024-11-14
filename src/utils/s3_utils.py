@@ -119,7 +119,7 @@ class S3Utils:
             contador_intentos_cargue: int,
             receipt_handle: str,
             error_handling_service
-    ) :
+    ):
         """
         Descomprime un archivo .zip en S3 y sube el contenido descomprimido a una carpeta
         con el nombre del archivo y un timestamp actual.
@@ -159,13 +159,15 @@ class S3Utils:
                 # si la cantidad de archivos descomprimidos no es igual a la cantidad esperada
                 if not contador_archivos_descomprimidos:
                     # handling error
-                    error_handling_service.handle_unexpected_file_count_error(
+                    error_handling_service.handle_generic_error(
                         id_archivo=id_archivo,
                         filekey=file_key,
                         bucket_name=bucket_name,
                         receipt_handle=receipt_handle,
                         file_name=nombre_archivo,
                         contador_intentos_cargue=contador_intentos_cargue,
+                        codigo_error=env.CONST_COD_ERROR_UNEXPECTED_FILE_COUNT,
+                        id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
                     )
 
                 # validar la estructura del nombre de cada archivo descomprimido
@@ -181,13 +183,15 @@ class S3Utils:
                             extra={"event_filename": nombre_archivo_zip}
                         )
                         # handling error
-                        error_handling_service.handle_invalid_file_suffix_error(
+                        error_handling_service.handle_generic_error(
                             id_archivo=id_archivo,
                             filekey=file_key,
                             bucket_name=bucket_name,
                             receipt_handle=receipt_handle,
                             file_name=nombre_archivo,
                             contador_intentos_cargue=contador_intentos_cargue,
+                            codigo_error=env.CONST_COD_ERROR_INVALID_FILE_SUFFIX,
+                            id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
                         )
 
                     else:
@@ -233,23 +237,28 @@ class S3Utils:
         except (ConnectionError, IOError) as e:
             self.logger.error(f"Error técnico al descomprimir el archivo {nombre_archivo}: {str(e)}",
                               extra={"event_filename": nombre_archivo})
-            error_handling_service.handle_technical_unzip_error(
+            error_handling_service.handle_generic_error(
                 id_archivo=id_archivo,
                 filekey=file_key,
                 bucket_name=bucket_name,
                 receipt_handle=receipt_handle,
                 file_name=nombre_archivo,
                 contador_intentos_cargue=contador_intentos_cargue,
+                codigo_error=env.CONST_COD_ERROR_TECHNICAL_UNZIP,
+                id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
+
             )
 
         except BadZipFile:
-            error_handling_service.handle_corrupted_zip_file_error(
+            error_handling_service.handle_generic_error(
                 id_archivo=id_archivo,
                 filekey=file_key,
                 bucket_name=bucket_name,
                 receipt_handle=receipt_handle,
                 file_name=nombre_archivo,
                 contador_intentos_cargue=contador_intentos_cargue,
+                codigo_error=env.CONST_COD_ERROR_CORRUPTED_FILE,
+                id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
             )
             self.logger.error("Error al descomprimir el archivo .zip", extra={"event_filename": nombre_archivo})
             return None

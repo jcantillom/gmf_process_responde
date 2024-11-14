@@ -65,7 +65,7 @@ class ArchivoService:
                         file_name, bucket, receipt_handle, acg_nombre_archivo
                     )
                 return
-            except Exception as e:
+            except Exception:
                 attempt_count += 1
                 if attempt_count < self.max_retries:
                     logger.error(
@@ -90,7 +90,9 @@ class ArchivoService:
                         receipt_handle, env.SQS_URL_PRO_RESPONSE_TO_PROCESS, file_name
                     )
 
-    # Funciones auxiliares
+    # =======================================================================
+    #                          FUNCIONES AUXILIARES
+    # =======================================================================
 
     def extract_event_details(self, event):
         """Extrae los detalles del evento necesarios para el procesamiento."""

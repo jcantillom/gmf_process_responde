@@ -13,7 +13,6 @@ class TestErrorHandlingService(unittest.TestCase):
     def setUp(self, mock_get_ssm_client):
         # Mock de la base de datos
 
-
         mock_ssm_client = MagicMock()
         mock_get_ssm_client.return_value = mock_ssm_client
 
@@ -89,13 +88,15 @@ class TestErrorHandlingService(unittest.TestCase):
         contador_intentos_cargue = 2
 
         # Ejecutar la función que se está probando
-        self.service.handle_unexpected_file_count_error(
+        self.service.handle_generic_error(
             id_archivo=id_archivo,
             filekey=filekey,
             bucket_name=bucket_name,
             receipt_handle=receipt_handle,
             file_name=file_name,
-            contador_intentos_cargue=contador_intentos_cargue
+            contador_intentos_cargue=contador_intentos_cargue,
+            codigo_error=env.CONST_COD_ERROR_UNEXPECTED_FILE_COUNT,
+            id_plantilla="template123"
         )
 
         # Verificar que se actualizó el estado de CGD_RTA_PROCESAMIENTO a "RECHAZADO"
