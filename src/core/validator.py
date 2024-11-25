@@ -3,8 +3,8 @@ import re
 import json
 from datetime import datetime
 from botocore.exceptions import ClientError
-from src.aws.clients import AWSClients
-from src.logs.logger import get_logger
+from src.services.aws_clients_service import AWSClients
+from src.utils.logger_utils import get_logger
 from src.config.config import env
 
 logger = get_logger(env.DEBUG_MODE)

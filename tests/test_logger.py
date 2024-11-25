@@ -1,8 +1,7 @@
 import unittest
 import logging
-from unittest.mock import patch
 
-from src.logs.logger import CustomFormatter, get_logger
+from src.utils.logger_utils import CustomFormatter, get_logger
 
 
 class TestLoggerCustomFormat(unittest.TestCase):

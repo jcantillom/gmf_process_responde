@@ -11,9 +11,9 @@ class TestValidateEventData(unittest.TestCase):
     def setUp(self):
         self.mock_db = MagicMock()
         # Mock para get_ssm_client para que devuelva un valor válido
-        with patch("src.aws.clients.AWSClients.get_s3_client"), \
-                patch("src.aws.clients.AWSClients.get_secrets_manager_client"), \
-                patch("src.aws.clients.AWSClients.get_ssm_client") as mock_ssm_client:
+        with patch("src.services.aws_clients_service.AWSClients.get_s3_client"), \
+                patch("src.services.aws_clients_service.AWSClients.get_secrets_manager_client"), \
+                patch("src.services.aws_clients_service.AWSClients.get_ssm_client") as mock_ssm_client:
             # Configurar el cliente SSM simulado
             mock_ssm = MagicMock()
             mock_ssm.get_parameter.return_value = {
@@ -24,7 +24,7 @@ class TestValidateEventData(unittest.TestCase):
             self.service = ArchivoService(self.mock_db)
 
     @patch("src.utils.sqs_utils.delete_message_from_sqs")
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_validate_event_data_valid_input(self, mock_logger, mock_delete_message_from_sqs):
         """
         Caso de prueba para validar el método validate_event_data con datos válidos.
@@ -45,7 +45,7 @@ class TestValidateEventData(unittest.TestCase):
         mock_logger.info.assert_not_called()
 
     @patch("src.utils.sqs_utils.delete_message_from_sqs")
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_validate_event_data_invalid_input(self, mock_logger, mock_delete_message_from_sqs):
         """
         Caso de prueba para validar el método validate_event_data con datos inválidos.
@@ -56,8 +56,8 @@ class TestValidateEventData(unittest.TestCase):
         result = self.service.validate_event_data(None, None, None)
         self.assertFalse(result)
 
-    @patch("src.utils.event_utils.extract_filename_from_body")
-    @patch("src.utils.event_utils.extract_bucket_from_body")
+    @patch("src.core.process_event.extract_filename_from_body")
+    @patch("src.core.process_event.extract_bucket_from_body")
     def test_extract_event_details_valid_event(self, mock_extract_bucket, mock_extract_filename):
         # Configurar el mock para las funciones de extracción
         mock_extract_filename.return_value = "test_file.txt"
@@ -92,9 +92,9 @@ class TestValidateFileExistenceInBucket(unittest.TestCase):
         self.mock_db = MagicMock()
 
         # Mock del cliente S3 y otros servicios de AWS
-        with patch("src.aws.clients.AWSClients.get_s3_client"), \
-                patch("src.aws.clients.AWSClients.get_secrets_manager_client"), \
-                patch("src.aws.clients.AWSClients.get_ssm_client") as mock_ssm_client:
+        with patch("src.services.aws_clients_service.AWSClients.get_s3_client"), \
+                patch("src.services.aws_clients_service.AWSClients.get_secrets_manager_client"), \
+                patch("src.services.aws_clients_service.AWSClients.get_ssm_client") as mock_ssm_client:
             # Configurar el mock del cliente SSM
             mock_ssm_instance = MagicMock()
             mock_ssm_client.return_value = mock_ssm_instance
@@ -108,8 +108,8 @@ class TestValidateFileExistenceInBucket(unittest.TestCase):
             self.service = ArchivoService(self.mock_db)
 
     @patch("src.utils.sqs_utils.delete_message_from_sqs")
-    @patch("src.logs.logger")
-    @patch("src.utils.s3_utils.S3Utils.check_file_exists_in_s3")
+    @patch("src.utils.logger_utils")
+    @patch("src.services.s3_service.S3Utils.check_file_exists_in_s3")
     def test_validate_file_existence_file_exists(self, mock_check_file_exists, mock_logger, mock_delete_message):
         """
         Caso en el que el archivo sí existe en el bucket.
@@ -131,8 +131,8 @@ class TestValidateFileExistenceInBucket(unittest.TestCase):
         mock_logger.error.assert_not_called()
 
     @patch("src.utils.sqs_utils.delete_message_from_sqs")
-    @patch("src.logs.logger")
-    @patch("src.utils.s3_utils.S3Utils.check_file_exists_in_s3")
+    @patch("src.utils.logger_utils")
+    @patch("src.services.s3_service.S3Utils.check_file_exists_in_s3")
     def test_validate_file_existence_file_not_exists(self, mock_check_file_exists, mock_logger, mock_delete_message):
         """
         Caso en el que el archivo no existe en el bucket.
@@ -158,9 +158,9 @@ class TestProcessSpecialFile(unittest.TestCase):
         self.mock_db = MagicMock()
 
         # Moquear los clientes de AWS
-        with patch("src.aws.clients.AWSClients.get_s3_client"), \
-                patch("src.aws.clients.AWSClients.get_secrets_manager_client"), \
-                patch("src.aws.clients.AWSClients.get_ssm_client") as mock_ssm_client:
+        with patch("src.services.aws_clients_service.AWSClients.get_s3_client"), \
+                patch("src.services.aws_clients_service.AWSClients.get_secrets_manager_client"), \
+                patch("src.services.aws_clients_service.AWSClients.get_ssm_client") as mock_ssm_client:
             # Configura el mock para el cliente SSM
             mock_ssm = MagicMock()
             mock_ssm.get_parameter.return_value = {
@@ -187,7 +187,7 @@ class TestProcessSpecialFile(unittest.TestCase):
         self.service.create_and_process_new_special_file = MagicMock()
         self.service.handle_invalid_special_file = MagicMock()
 
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_process_special_file_existing_special_file(self, mock_logger):
         """
         Caso en el que el archivo es especial y ya existe.
@@ -258,7 +258,7 @@ class TestProcessSpecialFile(unittest.TestCase):
             # Verificar que logger.debug fue llamado para el mensaje correspondiente
             mock_logger.debug.assert_called_with(f"El archivo especial {file_name} no existe en la base de datos.")
 
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_process_special_file_invalid_file(self, mock_logger):
         """
         Caso en el que el archivo no es especial.
@@ -284,9 +284,9 @@ class TestCheckExistingSpecialFile(unittest.TestCase):
         self.mock_db = MagicMock()
 
         # Moquear los clientes de AWS
-        with patch("src.aws.clients.AWSClients.get_s3_client"), \
-                patch("src.aws.clients.AWSClients.get_secrets_manager_client"), \
-                patch("src.aws.clients.AWSClients.get_ssm_client") as mock_ssm_client:
+        with patch("src.services.aws_clients_service.AWSClients.get_s3_client"), \
+                patch("src.services.aws_clients_service.AWSClients.get_secrets_manager_client"), \
+                patch("src.services.aws_clients_service.AWSClients.get_ssm_client") as mock_ssm_client:
             # Configura el mock para el cliente SSM
             mock_ssm = MagicMock()
             mock_ssm.get_parameter.return_value = {
@@ -302,7 +302,7 @@ class TestCheckExistingSpecialFile(unittest.TestCase):
         # Moquear los métodos utilizados en ArchivoService
         self.service.archivo_repository = MagicMock()
 
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_check_existing_special_file_exists(self, mock_logger):
         """
         Caso en el que el archivo especial ya existe en la base de datos.
@@ -319,7 +319,7 @@ class TestCheckExistingSpecialFile(unittest.TestCase):
         # Verificar que la función devuelve True
         self.assertTrue(result)
 
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_check_existing_special_file_not_exists(self, mock_logger):
         """
         Caso en el que el archivo especial no existe en la base de datos.
@@ -345,9 +345,9 @@ class TestValidarEstadoSpecialFile(unittest.TestCase):
         self.mock_db = MagicMock()
 
         # Moquear los clientes de AWS
-        with patch("src.aws.clients.AWSClients.get_s3_client"), \
-                patch("src.aws.clients.AWSClients.get_secrets_manager_client"), \
-                patch("src.aws.clients.AWSClients.get_ssm_client") as mock_ssm_client:
+        with patch("src.services.aws_clients_service.AWSClients.get_s3_client"), \
+                patch("src.services.aws_clients_service.AWSClients.get_secrets_manager_client"), \
+                patch("src.services.aws_clients_service.AWSClients.get_ssm_client") as mock_ssm_client:
             # Configurar el mock para el cliente SSM
             mock_ssm = MagicMock()
             mock_ssm.get_parameter.return_value = {
@@ -365,7 +365,7 @@ class TestValidarEstadoSpecialFile(unittest.TestCase):
         self.service.archivo_validator = MagicMock()
         self.service.error_handling_service = MagicMock()
 
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_estado_es_valido(self, mock_logger):
         """
         Caso en el que el estado del archivo es válido.
@@ -386,7 +386,7 @@ class TestValidarEstadoSpecialFile(unittest.TestCase):
         # Verificar que la función devuelve el estado
         self.assertEqual(result, estado_valido)
 
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_estado_no_es_valido(self, mock_logger):
         """
         Caso en el que el estado del archivo no es válido.
@@ -410,7 +410,7 @@ class TestValidarEstadoSpecialFile(unittest.TestCase):
         # Verificar que se llamó al servicio de manejo de errores
         self.service.error_handling_service.handle_error_master.assert_called_once()
 
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     @patch("sys.exit")
     def test_archivo_sin_estado(self, mock_exit, mock_logger):
         """
@@ -436,9 +436,9 @@ class TestGetEstadoArchivo(unittest.TestCase):
         self.mock_db = MagicMock()
 
         # Moquear los clientes de AWS
-        with patch("src.aws.clients.AWSClients.get_s3_client"), \
-                patch("src.aws.clients.AWSClients.get_secrets_manager_client"), \
-                patch("src.aws.clients.AWSClients.get_ssm_client") as mock_ssm_client:
+        with patch("src.services.aws_clients_service.AWSClients.get_s3_client"), \
+                patch("src.services.aws_clients_service.AWSClients.get_secrets_manager_client"), \
+                patch("src.services.aws_clients_service.AWSClients.get_ssm_client") as mock_ssm_client:
             # Configurar el mock para el cliente SSM
             mock_ssm = MagicMock()
             mock_ssm.get_parameter.return_value = {
@@ -454,7 +454,7 @@ class TestGetEstadoArchivo(unittest.TestCase):
         # Moquear el archivo repository
         self.service.archivo_repository = MagicMock()
 
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_get_estado_archivo_con_estado(self, mock_logger):
         """
         Caso en el que el archivo tiene un estado.
@@ -474,7 +474,7 @@ class TestGetEstadoArchivo(unittest.TestCase):
 
         # Verificar que se registró un mensaje de depuración
 
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_get_estado_archivo_sin_estado(self, mock_logger):
         """
         Caso en el que el archivo no tiene un estado.
@@ -499,9 +499,9 @@ class TestMoveFileAndUpdateState(unittest.TestCase):
         self.mock_db = MagicMock()
 
         # Moquear los clientes de AWS
-        with patch("src.aws.clients.AWSClients.get_s3_client"), \
-                patch("src.aws.clients.AWSClients.get_secrets_manager_client"), \
-                patch("src.aws.clients.AWSClients.get_ssm_client") as mock_ssm_client:
+        with patch("src.services.aws_clients_service.AWSClients.get_s3_client"), \
+                patch("src.services.aws_clients_service.AWSClients.get_secrets_manager_client"), \
+                patch("src.services.aws_clients_service.AWSClients.get_ssm_client") as mock_ssm_client:
             # Configurar el mock para que devuelva un parámetro válido
             mock_ssm_client().get_parameter.return_value = {
                 'Parameter': {
@@ -519,7 +519,7 @@ class TestMoveFileAndUpdateState(unittest.TestCase):
         self.service.s3_utils = MagicMock()
         self.service.archivo_repository = MagicMock()
 
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_move_file_and_update_state(self, mock_logger):
         """
         Caso en el que se mueve el archivo y se actualiza su estado correctamente.
@@ -553,9 +553,9 @@ class TestInsertFileStates(unittest.TestCase):
         self.mock_db = MagicMock()
 
         # Moquear los clientes de AWS y sus respuestas
-        with patch("src.aws.clients.AWSClients.get_s3_client"), \
-                patch("src.aws.clients.AWSClients.get_secrets_manager_client"), \
-                patch("src.aws.clients.AWSClients.get_ssm_client") as mock_ssm_client:
+        with patch("src.services.aws_clients_service.AWSClients.get_s3_client"), \
+                patch("src.services.aws_clients_service.AWSClients.get_secrets_manager_client"), \
+                patch("src.services.aws_clients_service.AWSClients.get_ssm_client") as mock_ssm_client:
             # Configurar el mock para que devuelva un parámetro válido
             mock_ssm_client().get_parameter.return_value = {
                 'Parameter': {
@@ -572,7 +572,7 @@ class TestInsertFileStates(unittest.TestCase):
         self.service.rta_procesamiento_repository = MagicMock()
         self.service.archivo_validator = MagicMock()
 
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_insert_file_states(self, mock_logger):
         """
         Caso en el que se insertan correctamente los estados del archivo en la base de datos.
@@ -623,7 +623,7 @@ class TestInsertFileStates(unittest.TestCase):
 
 
 class TestUnzipFile(unittest.TestCase):
-    @patch("src.aws.clients.AWSClients.get_ssm_client")
+    @patch("src.services.aws_clients_service.AWSClients.get_ssm_client")
     def setUp(self, mock_ssm_client):
         self.mock_db = MagicMock()
 
@@ -639,7 +639,7 @@ class TestUnzipFile(unittest.TestCase):
         self.service = ArchivoService(self.mock_db)
         self.service.s3_utils = MagicMock()
 
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_unzip_file(self, mock_logger):
         """
         Caso en el que se descomprime el archivo correctamente en S3.
@@ -680,7 +680,7 @@ class TestUnzipFile(unittest.TestCase):
 
 
 class TestProcessSqsResponse(unittest.TestCase):
-    @patch("src.aws.clients.AWSClients.get_ssm_client")
+    @patch("src.services.aws_clients_service.AWSClients.get_ssm_client")
     def setUp(self, mock_ssm_client):
         # Configurar el cliente SSM simulado para devolver una respuesta válida
         mock_ssm_client_instance = mock_ssm_client.return_value
@@ -696,7 +696,7 @@ class TestProcessSqsResponse(unittest.TestCase):
 
     @patch("src.utils.sqs_utils.delete_message_from_sqs")
     @patch("src.utils.sqs_utils.send_message_to_sqs")
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_process_sqs_response_estado_enviado(self, mock_logger, mock_send_message, mock_delete_message):
         """
         Caso en el que el estado ya está marcado como enviado.
@@ -714,7 +714,7 @@ class TestProcessSqsResponse(unittest.TestCase):
 
     @patch("src.utils.sqs_utils.delete_message_from_sqs")
     @patch("src.utils.sqs_utils.send_message_to_sqs")
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_process_sqs_response_estado_no_enviado(self, mock_logger, mock_send_message, mock_delete_message):
         """
         Caso en el que el estado no está marcado como enviado.
@@ -738,7 +738,7 @@ class TestProcessSqsResponse(unittest.TestCase):
 
 
 class TestHandleInvalidSpecialFile(unittest.TestCase):
-    @patch("src.aws.clients.AWSClients.get_ssm_client")
+    @patch("src.services.aws_clients_service.AWSClients.get_ssm_client")
     def setUp(self, mock_ssm_client):
         # Configurar el cliente SSM simulado para devolver una respuesta válida
         mock_ssm_client_instance = mock_ssm_client.return_value
@@ -752,7 +752,7 @@ class TestHandleInvalidSpecialFile(unittest.TestCase):
         self.service = ArchivoService(self.mock_db)
         self.service.error_handling_service = MagicMock()
 
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_handle_invalid_special_file(self, mock_logger):
         """
         Caso en el que se maneja un archivo especial con formato incorrecto.
@@ -778,7 +778,7 @@ class TestHandleInvalidSpecialFile(unittest.TestCase):
 
 
 class TestProcessGeneralFile(unittest.TestCase):
-    @patch("src.aws.clients.AWSClients.get_ssm_client")
+    @patch("src.services.aws_clients_service.AWSClients.get_ssm_client")
     def setUp(self, mock_ssm_client):
         # Configurar el cliente SSM simulado para devolver una respuesta válida
         mock_ssm_client_instance = mock_ssm_client.return_value
@@ -795,7 +795,7 @@ class TestProcessGeneralFile(unittest.TestCase):
         self.service.error_handling_service = MagicMock()
         self.service.s3_utils = MagicMock()
 
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_process_general_file_no_existe(self, mock_logger):
         """
         Caso en el que el archivo no existe en la base de datos.
@@ -822,7 +822,7 @@ class TestProcessGeneralFile(unittest.TestCase):
             filename=file_name,
         )
 
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_process_general_file_estado_invalido(self, mock_logger):
         """
         Caso en el que el archivo tiene un estado no válido.
@@ -851,7 +851,7 @@ class TestProcessGeneralFile(unittest.TestCase):
             filename=file_name,
         )
 
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_process_general_file_estado_valido(self, mock_logger):
         """
         Caso en el que el archivo existe y tiene un estado válido.
@@ -880,7 +880,7 @@ class TestProcessGeneralFile(unittest.TestCase):
 
 
 class TestValidarYProcesarArchivo(unittest.TestCase):
-    @patch("src.aws.clients.AWSClients.get_ssm_client")
+    @patch("src.services.aws_clients_service.AWSClients.get_ssm_client")
     def setUp(self, mock_ssm_client):
         # Configurar el cliente SSM simulado
         mock_ssm_instance = mock_ssm_client.return_value
@@ -899,7 +899,7 @@ class TestValidarYProcesarArchivo(unittest.TestCase):
         self.service.validate_file_existence_in_bucket = MagicMock()
 
     @patch("src.services.archivo_service.ArchivoService.extract_event_details")
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_event_data_no_valido(self, mock_logger, mock_extract_event_details):
         """
         Caso en el que los datos del evento no son válidos.
@@ -914,7 +914,7 @@ class TestValidarYProcesarArchivo(unittest.TestCase):
         self.service.validar_y_procesar_archivo(event)
 
     @patch("src.services.archivo_service.ArchivoService.extract_event_details")
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_archivo_no_existe_en_bucket(self, mock_logger, mock_extract_event_details):
         """
         Caso en el que el archivo no existe en el bucket.
@@ -935,7 +935,7 @@ class TestValidarYProcesarArchivo(unittest.TestCase):
                                                                                "receipt_handle")
 
     @patch("src.services.archivo_service.ArchivoService.extract_event_details")
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_archivo_especial(self, mock_logger, mock_extract_event_details):
         """
         Caso en el que el archivo tiene un prefijo especial.
@@ -952,7 +952,7 @@ class TestValidarYProcesarArchivo(unittest.TestCase):
         self.service.validar_y_procesar_archivo(event)
 
     @patch("src.services.archivo_service.ArchivoService.extract_event_details")
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_archivo_general(self, mock_logger, mock_extract_event_details):
         """
         Caso en el que el archivo es general.

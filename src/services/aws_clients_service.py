@@ -2,7 +2,7 @@ import json
 import os
 import boto3
 from botocore.exceptions import ClientError
-from src.logs.logger import get_logger
+from src.utils.logger_utils import get_logger
 from src.utils.singleton import SingletonMeta
 from src.config.config import env
 

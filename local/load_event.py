@@ -1,6 +1,5 @@
 import json
-import os
-from src.logs.logger import get_logger
+from src.utils.logger_utils import get_logger
 from src.config.config import env
 
 logger = get_logger(env.DEBUG_MODE)

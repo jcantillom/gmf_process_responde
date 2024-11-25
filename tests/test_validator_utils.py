@@ -1,18 +1,17 @@
 import json
 import os
 import unittest
-from datetime import datetime
 from unittest.mock import patch, MagicMock
 from assertpy import assert_that
 
 from botocore.exceptions import ClientError
 
 from src.config.config import env, logger
-from src.utils.validator_utils import ArchivoValidator  # Ajusta la ruta según tu estructura
+from src.core.validator import ArchivoValidator  # Ajusta la ruta según tu estructura
 
 
 class TestArchivoValidator(unittest.TestCase):
-    @patch('src.aws.clients.AWSClients.get_ssm_client')
+    @patch('src.services.aws_clients_service.AWSClients.get_ssm_client')
     def setUp(self, mock_get_ssm_client):
         mock_ssm_client = MagicMock()
         mock_get_ssm_client.return_value = mock_ssm_client
@@ -66,7 +65,7 @@ class TestArchivoValidator(unittest.TestCase):
         filename = "RE_ESP20220101-0001"
         self.assertFalse(self.validator.validate_filename_structure_for_general_file(filename))
 
-    @patch('src.aws.clients.AWSClients.get_ssm_client')  # Asegúrate de que esta ruta sea correcta
+    @patch('src.services.aws_clients_service.AWSClients.get_ssm_client')  # Asegúrate de que esta ruta sea correcta
     def test_get_file_config_name_success(self, mock_get_ssm_client):
         # Configuración del mock para el cliente SSM
         parameter_name = '/gmf/process-responses/general-config'
@@ -111,7 +110,7 @@ class TestArchivoValidator(unittest.TestCase):
         # Assert
         self.assertTrue(result)
 
-    @patch('src.aws.clients.AWSClients.get_ssm_client')  # Parchea la función que obtiene el cliente SSM
+    @patch('src.services.aws_clients_service.AWSClients.get_ssm_client')  # Parchea la función que obtiene el cliente SSM
     @patch.dict(os.environ, {
         'PARAMETER_STORE_FILE_CONFIG': '/gmf/process-responses/general-config',
         'SPECIAL_START_NAME': 'special_start',
@@ -142,7 +141,7 @@ class TestArchivoValidator(unittest.TestCase):
         # Act
         result = validator.is_special_file(filename)
 
-    @patch('src.aws.clients.AWSClients.get_ssm_client')
+    @patch('src.services.aws_clients_service.AWSClients.get_ssm_client')
     def test_get_valid_states_success(self, mock_get_ssm_client):
         """
         Prueba que _get_valid_states obtenga correctamente los estados válidos desde SSM.
@@ -169,7 +168,7 @@ class TestArchivoValidator(unittest.TestCase):
         # Verificar que la función retorne los estados correctos
         self.assertEqual(result, ['PENDIENTE', 'PROCESADO', 'RECHAZADO'])
 
-    @patch('src.aws.clients.AWSClients.get_ssm_client')
+    @patch('src.services.aws_clients_service.AWSClients.get_ssm_client')
     def test_get_valid_states_client_error(self, mock_get_ssm_client):
         """
         Prueba que _get_valid_states maneje correctamente un ClientError devolviendo una lista vacía.
@@ -189,7 +188,7 @@ class TestArchivoValidator(unittest.TestCase):
         # Verificar que la función retorne una lista vacía en caso de error
         self.assertEqual(result, [])
 
-    @patch('src.aws.clients.AWSClients.get_ssm_client')
+    @patch('src.services.aws_clients_service.AWSClients.get_ssm_client')
     def test_get_valid_states_no_valid_states_key(self, mock_get_ssm_client):
         """
         Prueba que _get_valid_states maneje el caso en que el parámetro no contenga la clave esperada.
@@ -373,7 +372,7 @@ class TestArchivoValidator(unittest.TestCase):
 
         assert_that(result).is_false()
 
-    @patch('src.utils.validator_utils.ArchivoValidator.is_valid_date_in_filename')
+    @patch('src.core.validator.ArchivoValidator.is_valid_date_in_filename')
     def test_is_general_file_invalid_date(self, mock_is_valid_date):
         """
         Prueba un archivo con una fecha mayor a la actual.
@@ -392,7 +391,7 @@ class TestArchivoValidator(unittest.TestCase):
         result = self.validator.validate_filename_structure_for_general_file(filename)
         self.assertFalse(result)
 
-    @patch('src.utils.validator_utils.ArchivoValidator.is_valid_date_in_filename')
+    @patch('src.core.validator.ArchivoValidator.is_valid_date_in_filename')
     def test_is_general_file_no_extension(self, mock_is_valid_date):
         """
         Prueba un archivo sin la extensión .zip.
@@ -403,7 +402,7 @@ class TestArchivoValidator(unittest.TestCase):
         result = self.validator.validate_filename_structure_for_general_file(filename)
         self.assertTrue(result)
 
-    @patch('src.utils.validator_utils.ArchivoValidator.is_valid_date_in_filename')
+    @patch('src.core.validator.ArchivoValidator.is_valid_date_in_filename')
     def test_is_general_file_invalid_date_format(self, mock_is_valid_date):
         """
         Prueba un archivo con una fecha en formato incorrecto.
@@ -414,7 +413,7 @@ class TestArchivoValidator(unittest.TestCase):
         result = self.validator.validate_filename_structure_for_general_file(filename)
         self.assertFalse(result)
 
-    @patch('src.utils.validator_utils.ArchivoValidator.is_valid_date_in_filename')
+    @patch('src.core.validator.ArchivoValidator.is_valid_date_in_filename')
     def test_is_special_file_invalid_date(self, mock_is_valid_date):
         """
         Prueba un archivo con una fecha mayor a la actual.
@@ -432,7 +431,7 @@ class TestArchivoValidator(unittest.TestCase):
         result = self.validator.is_special_file(filename)
         self.assertFalse(result)
 
-    @patch('src.utils.validator_utils.ArchivoValidator.is_valid_date_in_filename')
+    @patch('src.core.validator.ArchivoValidator.is_valid_date_in_filename')
     def test_is_special_file_invalid_date_format(self, mock_is_valid_date):
         """
         Prueba un archivo con una fecha en un formato incorrecto.
@@ -443,7 +442,7 @@ class TestArchivoValidator(unittest.TestCase):
         result = self.validator.is_special_file(filename)
         self.assertFalse(result)
 
-    @patch('src.aws.clients.AWSClients.get_ssm_client')
+    @patch('src.services.aws_clients_service.AWSClients.get_ssm_client')
     def test_get_retry_parameters_success(self, mock_get_ssm_client):
         """Prueba que se obtienen los parámetros correctamente desde SSM"""
         # Configurar el cliente SSM simulado
@@ -466,7 +465,7 @@ class TestArchivoValidator(unittest.TestCase):
         self.assertEqual(result, expected_data)
         mock_ssm_client.get_parameter.assert_called_once_with(Name='my_parameter', WithDecryption=True)
 
-    @patch('src.aws.clients.AWSClients.get_ssm_client')
+    @patch('src.services.aws_clients_service.AWSClients.get_ssm_client')
     def test_get_retry_parameters_client_error(self, mock_get_ssm_client):
         """Prueba que la función maneja un ClientError y devuelve valores predeterminados"""
         # Configurar el cliente SSM simulado para que lance un ClientError
@@ -500,7 +499,7 @@ class TestArchivoValidator(unittest.TestCase):
         # Assert
         self.assertFalse(result)
 
-    @patch('src.utils.validator_utils.logger')
+    @patch('src.core.validator.logger')
     def test_validate_file_in_zip(self, mock_logger=None):
         # Arrange
         extracted_filename = "archivo123.txt"
@@ -517,7 +516,7 @@ class TestArchivoValidator(unittest.TestCase):
 
 class TestValidarArchivosInZip(unittest.TestCase):
 
-    @patch('src.aws.clients.AWSClients.get_ssm_client')
+    @patch('src.services.aws_clients_service.AWSClients.get_ssm_client')
     @patch('src.config.config.env')
     def setUp(self, mock_env, mock_ssm_client):
         """Configura el objeto para las pruebas."""
@@ -594,7 +593,7 @@ class TestValidarArchivosInZip(unittest.TestCase):
 
 class TestIsSpecialFile(unittest.TestCase):
 
-    @patch('src.aws.clients.AWSClients.get_ssm_client')
+    @patch('src.services.aws_clients_service.AWSClients.get_ssm_client')
     @patch('src.config.config.env')
     def setUp(self, mock_env, mock_get_ssm_client):
         """Configura el objeto para las pruebas."""
@@ -622,7 +621,7 @@ class TestIsSpecialFile(unittest.TestCase):
         self.validator.special_end = "SUFFIX"
 
     @patch.object(ArchivoValidator, 'is_valid_date_in_filename', return_value=True)
-    @patch('src.utils.validator_utils.logger')
+    @patch('src.core.validator.logger')
     def test_fecha_valida(self, mock_logger, mock_is_valid_date):
         """Prueba que el archivo sea válido si la fecha es válida."""
         filename = "PREFIX20241112-SUFFIX"
@@ -635,7 +634,7 @@ class TestIsSpecialFile(unittest.TestCase):
         )
 
     @patch.object(ArchivoValidator, 'is_valid_date_in_filename', return_value=False)
-    @patch('src.utils.validator_utils.logger')
+    @patch('src.core.validator.logger')
     def test_fecha_invalida(self, mock_logger, mock_is_valid_date):
         """Prueba que el archivo sea inválido si la fecha no es válida."""
         filename = "PREFIX20241114-SUFFIX"

@@ -2,7 +2,7 @@ import json
 import os
 import re
 from src.config.config import env, logger
-from .validator_utils import ArchivoValidator
+from src.core.validator import ArchivoValidator
 
 
 def extract_filename_from_body(body: str) -> str:

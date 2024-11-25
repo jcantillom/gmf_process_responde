@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import patch, MagicMock
-from src.connection.database import DataAccessLayer
+from src.services.database_service import DataAccessLayer
 
 
 class TestDataAccessLayer(unittest.TestCase):
@@ -12,9 +12,9 @@ class TestDataAccessLayer(unittest.TestCase):
         'DB_NAME': 'test_db',
         'SECRETS_DB': 'test_secret'
     })
-    @patch('src.aws.clients.AWSClients.get_secret')
-    @patch('src.connection.database.create_engine')
-    @patch('src.connection.database.sessionmaker')
+    @patch('src.services.aws_clients_service.AWSClients.get_secret')
+    @patch('src.services.database_service.create_engine')
+    @patch('src.services.database_service.sessionmaker')
     def test_connection_success(self, mock_sessionmaker, mock_create_engine, mock_get_secret):
         # Configura el secreto simulado
         mock_get_secret.return_value = {
@@ -48,7 +48,7 @@ class TestDataAccessLayer(unittest.TestCase):
         'DB_NAME': 'test_db',
         'SECRETS_DB': 'test_secret'
     })
-    @patch('src.aws.clients.AWSClients.get_secret')
+    @patch('src.services.aws_clients_service.AWSClients.get_secret')
     def test_connection_failure(self, mock_get_secret):
         # Simula que se produce un error al obtener secretos
         mock_get_secret.side_effect = Exception("Failed to get secrets")
@@ -58,7 +58,7 @@ class TestDataAccessLayer(unittest.TestCase):
 
         self.assertIn("Failed to get secrets", str(context.exception))
 
-    @patch('src.connection.database.DataAccessLayer')
+    @patch('src.services.database_service.DataAccessLayer')
     def test_session_scope_commit(self, mock_dal_instance):
         # Configura el mock de DataAccessLayer
         self.mock_session = MagicMock()

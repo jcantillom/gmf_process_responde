@@ -1,7 +1,7 @@
 from datetime import datetime
 from sqlalchemy.orm import Session
 from src.models.cgd_archivo import CGDArchivoEstado
-from src.logs.logger import get_logger
+from src.utils.logger_utils import get_logger
 from src.config.config import env
 
 logger = get_logger(env.DEBUG_MODE)

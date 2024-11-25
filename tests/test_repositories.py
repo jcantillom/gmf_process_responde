@@ -1,22 +1,17 @@
 import unittest
 from src.config.config import env
-from src.models.cgd_archivo import CGDArchivoEstado, CGDArchivo
+from src.models.cgd_archivo import CGDArchivo
 from src.models.cgd_error_catalogo import CGDCatalogoErrores
 from src.models.cgd_correo_parametro import CGDCorreosParametros
-from src.models.base import Base
 from src.models.cgd_rta_pro_archivos import CGDRtaProArchivos
-from src.models.cgd_rta_procesamiento import CGDRtaProcesamiento
 from src.repositories.archivo_estado_repository import ArchivoEstadoRepository
 from src.repositories.archivo_repository import ArchivoRepository
 from src.repositories.catalogo_error_repository import CatalogoErrorRepository
 from datetime import datetime
 from src.repositories.cgd_rta_pro_archivos_repository import CGDRtaProArchivosRepository
 from src.repositories.correo_parametro_repository import CorreoParametroRepository
-from src.repositories.rta_procesamiento_repository import RtaProcesamientoRepository
 from unittest.mock import patch, MagicMock
-from src.aws.clients import AWSClients
 from sqlalchemy.orm import Session
-from unittest.mock import ANY
 
 
 class TestArchivoEstadoRepository(unittest.TestCase):

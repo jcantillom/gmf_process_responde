@@ -1,9 +1,8 @@
 import json
-import os
 import unittest
 from unittest.mock import patch, MagicMock
 from botocore.exceptions import ClientError
-from src.aws.clients import AWSClients
+from src.services.aws_clients_service import AWSClients
 
 
 class TestAWSClients(unittest.TestCase):
@@ -80,8 +79,8 @@ class TestAWSClients(unittest.TestCase):
         )
         self.assertEqual(ssm_client, mock_client)
 
-    @patch("src.aws.clients.AWSClients.get_secrets_manager_client")
-    @patch("src.logs.logger")
+    @patch("src.services.aws_clients_service.AWSClients.get_secrets_manager_client")
+    @patch("src.utils.logger_utils")
     def test_get_secret_success(self, mock_logger, mock_get_client):
         # Configurar el cliente simulado
         mock_client = MagicMock()
@@ -95,7 +94,7 @@ class TestAWSClients(unittest.TestCase):
         self.assertEqual(secret, {"username": "admin", "password": "1234"})
         mock_logger.error.assert_not_called()
 
-    @patch('src.aws.clients.AWSClients.get_secrets_manager_client')
+    @patch('src.services.aws_clients_service.AWSClients.get_secrets_manager_client')
     def test_get_secret_client_error(self, mock_get_client):
         # Mock para simular un error al obtener el secreto
         mock_client = MagicMock()

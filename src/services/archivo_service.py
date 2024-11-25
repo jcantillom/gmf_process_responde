@@ -1,17 +1,16 @@
 from datetime import datetime
 from src.repositories.archivo_repository import ArchivoRepository
-from src.utils.s3_utils import S3Utils
-from src.utils.event_utils import (
+from src.services.s3_service import S3Utils
+from src.core.process_event import (
     extract_filename_from_body,
     extract_bucket_from_body,
     extract_date_from_filename,
     create_file_id,
-    extract_consecutivo_plataforma_origen,
     build_acg_name_if_general_file,
 )
 from src.utils.sqs_utils import delete_message_from_sqs, send_message_to_sqs
-from src.utils.validator_utils import ArchivoValidator
-from src.logs.logger import get_logger
+from src.core.validator import ArchivoValidator
+from src.utils.logger_utils import get_logger
 from sqlalchemy.orm import Session
 from src.config.config import env
 from .error_handling_service import ErrorHandlingService

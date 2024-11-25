@@ -1,10 +1,9 @@
 import json
-import unittest
 from io import BytesIO
 from zipfile import ZipFile, BadZipFile
 
 from src.config.config import env
-from src.utils.event_utils import (
+from src.core.process_event import (
     extract_filename_from_body,
     extract_bucket_from_body,
     extract_date_from_filename,
@@ -17,15 +16,12 @@ from src.utils.sqs_utils import (
     send_message_to_sqs,
     build_email_message,
 )
-from src.utils.validator_utils import ArchivoValidator
 from src.utils.singleton import SingletonMeta
 from src.services.error_handling_service import ErrorHandlingService
 import unittest
 from unittest.mock import MagicMock, patch
 from botocore.exceptions import ClientError
-from src.utils.s3_utils import S3Utils
-from src.models.cgd_rta_procesamiento import CGDRtaProcesamiento
-from sqlalchemy.orm import Session
+from src.services.s3_service import S3Utils
 
 
 class Singleton(metaclass=SingletonMeta):
@@ -122,7 +118,7 @@ class TestEventUtils(unittest.TestCase):
         with self.assertRaises(KeyError):
             extract_bucket_from_body(body)
 
-    @patch('src.utils.event_utils.env')
+    @patch('src.core.process_event.env')
     def test_extract_date_from_filename_valid(self, mock_env):
         # Configurar el prefijo del archivo especial en la variable de entorno
         mock_env.CONST_PRE_SPECIAL_FILE = "RE_ESP"
@@ -132,7 +128,7 @@ class TestEventUtils(unittest.TestCase):
         result = extract_date_from_filename(filename)
         self.assertEqual(result, "20241002")
 
-    @patch('src.utils.event_utils.env')
+    @patch('src.core.process_event.env')
     def test_extract_date_from_filename_invalid(self, mock_env):
         # Configurar el prefijo del archivo especial en la variable de entorno
         mock_env.CONST_PRE_SPECIAL_FILE = "RE_ESP"
@@ -142,10 +138,10 @@ class TestEventUtils(unittest.TestCase):
         result = extract_date_from_filename(filename)
         self.assertEqual(result, "")
 
-    @patch('src.utils.validator_utils.AWSClients.get_ssm_client')  # Mock del cliente SSM
-    @patch('src.utils.validator_utils.ArchivoValidator')  # Mock de la clase ArchivoValidator
-    @patch('src.utils.event_utils.env')  # Mock de las variables de entorno
-    @patch('src.utils.event_utils.extract_date_from_filename')  # Mock de la función extract_date_from_filename
+    @patch('src.core.validator.AWSClients.get_ssm_client')  # Mock del cliente SSM
+    @patch('src.core.validator.ArchivoValidator')  # Mock de la clase ArchivoValidator
+    @patch('src.core.process_event.env')  # Mock de las variables de entorno
+    @patch('src.core.process_event.extract_date_from_filename')  # Mock de la función extract_date_from_filename
     def test_create_file_id_with_valid_date(self, mock_extract_date, mock_env, mock_validator, mock_get_ssm_client):
         """
         Test que verifica la creación de un ID de archivo con una fecha válida.
@@ -184,7 +180,7 @@ class TestEventUtils(unittest.TestCase):
         # Verificar que el ID de archivo generado es correcto
         self.assertEqual(result, 2024100201030000)
 
-    @patch('src.utils.event_utils.env')
+    @patch('src.core.process_event.env')
     def test_extract_consecutivo_plataforma_origen(self, mock_env):
         # Configurar el prefijo del archivo especial en la variable de entorno
         mock_env.CONST_PRE_SPECIAL_FILE = "RE_ESP"
@@ -194,7 +190,7 @@ class TestEventUtils(unittest.TestCase):
         result = extract_consecutivo_plataforma_origen(filename)
         self.assertEqual(result, "0001")
 
-    @patch('src.utils.event_utils.env')
+    @patch('src.core.process_event.env')
     def test_build_acg_name_if_general_file(self, mock_env):
         # Configurar el prefijo del archivo general en la variable de entorno
         mock_env.CONST_PRE_GENERAL_FILE = "RE_GEN"
@@ -242,7 +238,7 @@ class TestSingleton(unittest.TestCase):
 
 class TestSQSUtils(unittest.TestCase):
 
-    @patch('src.aws.clients.AWSClients.get_sqs_client')
+    @patch('src.services.aws_clients_service.AWSClients.get_sqs_client')
     def test_send_message_to_sqs(self, mock_get_sqs_client):
         # Configura el mock
         mock_sqs = MagicMock()
@@ -261,7 +257,7 @@ class TestSQSUtils(unittest.TestCase):
             MessageBody=json.dumps(message_body, ensure_ascii=False)
         )
 
-    @patch('src.aws.clients.AWSClients.get_sqs_client')
+    @patch('src.services.aws_clients_service.AWSClients.get_sqs_client')
     def test_delete_message_from_sqs(self, mock_get_sqs_client):
         # Configura el mock
         mock_sqs = MagicMock()
@@ -280,7 +276,7 @@ class TestSQSUtils(unittest.TestCase):
             ReceiptHandle=receipt_handle
         )
 
-    @patch('src.aws.clients.AWSClients.get_sqs_client')
+    @patch('src.services.aws_clients_service.AWSClients.get_sqs_client')
     def test_delete_message_from_sqs_error(self, mock_get_sqs_client):
         # Configura el mock
         mock_sqs = MagicMock()
@@ -300,7 +296,7 @@ class TestSQSUtils(unittest.TestCase):
             ReceiptHandle=receipt_handle
         )
 
-    @patch('src.aws.clients.AWSClients.get_sqs_client')
+    @patch('src.services.aws_clients_service.AWSClients.get_sqs_client')
     def test_send_message_to_sqs_error(self, mock_get_sqs_client):
         # Configura el mock
         mock_sqs = MagicMock()
@@ -337,8 +333,8 @@ class TestSQSUtils(unittest.TestCase):
 
 class TestS3Utils(unittest.TestCase):
     @patch('boto3.client')
-    @patch('src.aws.clients.AWSClients.get_ssm_client')
-    @patch('src.aws.clients.AWSClients.get_s3_client')
+    @patch('src.services.aws_clients_service.AWSClients.get_ssm_client')
+    @patch('src.services.aws_clients_service.AWSClients.get_s3_client')
     def setUp(self, mock_get_s3_client, mock_get_ssm_client, mock_boto_client):
         # Crear mocks para los clientes
         mock_ssm_client = MagicMock()
@@ -441,8 +437,8 @@ class TestS3Utils(unittest.TestCase):
 
 class TestS3UtilsZip(unittest.TestCase):
     @patch('boto3.client')
-    @patch('src.aws.clients.AWSClients.get_ssm_client')
-    @patch('src.aws.clients.AWSClients.get_s3_client')
+    @patch('src.services.aws_clients_service.AWSClients.get_ssm_client')
+    @patch('src.services.aws_clients_service.AWSClients.get_s3_client')
     def setUp(self, mock_boto_client, mock_get_ssm_client, mock_get_s3_client):
         # Configurar el mock para el cliente S3 y SSM
         mock_ssm_client = MagicMock()

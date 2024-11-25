@@ -1,16 +1,15 @@
 import sys
 from datetime import datetime
-from fileinput import filename
 from io import BytesIO
 from zipfile import ZipFile, BadZipFile
 from botocore.exceptions import ClientError
-from src.aws.clients import AWSClients
-from src.logs.logger import get_logger
+from src.services.aws_clients_service import AWSClients
+from src.utils.logger_utils import get_logger
 from src.config.config import env
 from src.repositories.rta_procesamiento_repository import RtaProcesamientoRepository
 from sqlalchemy.orm import Session
 from src.repositories.archivo_repository import ArchivoRepository
-from src.utils.validator_utils import ArchivoValidator
+from src.core.validator import ArchivoValidator
 from src.services.cgd_rta_pro_archivo_service import CGDRtaProArchivosService
 
 

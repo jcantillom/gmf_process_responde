@@ -2,8 +2,7 @@ import os
 import sys
 from pydantic_settings import BaseSettings
 from pydantic import ValidationError
-from src.logs.logger import get_logger
-from src.utils.singleton import SingletonMeta
+from src.utils.logger_utils import get_logger
 
 logger = get_logger(__name__)
 

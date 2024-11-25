@@ -1,11 +1,11 @@
 from src.repositories.catalogo_error_repository import CatalogoErrorRepository
 from src.repositories.correo_parametro_repository import CorreoParametroRepository
 from src.utils.sqs_utils import send_message_to_sqs, build_email_message, delete_message_from_sqs
-from src.utils.s3_utils import S3Utils
-from src.logs.logger import get_logger
+from src.services.s3_service import S3Utils
+from src.utils.logger_utils import get_logger
 from src.config.config import env
 from sqlalchemy.orm import Session
-from src.utils.validator_utils import ArchivoValidator
+from src.core.validator import ArchivoValidator
 from src.repositories.rta_procesamiento_repository import RtaProcesamientoRepository
 from src.repositories.archivo_repository import ArchivoRepository
 

@@ -2,8 +2,8 @@ from src.models.cgd_rta_procesamiento import CGDRtaProcesamiento
 from src.models.cgd_rta_pro_archivos import CGDRtaProArchivos
 from .archivo_repository import ArchivoRepository
 from datetime import datetime, timezone, timedelta
-from sqlalchemy.orm import Session, aliased
-from src.utils.validator_utils import ArchivoValidator
+from sqlalchemy.orm import Session
+from src.core.validator import ArchivoValidator
 from src.config.config import env
 
 

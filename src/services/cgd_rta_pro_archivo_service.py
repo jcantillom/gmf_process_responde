@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from src.models.cgd_rta_pro_archivos import CGDRtaProArchivos
-from src.logs.logger import get_logger
+from src.utils.logger_utils import get_logger
 from src.config.config import env
 from src.repositories.cgd_rta_pro_archivos_repository import CGDRtaProArchivosRepository
 from src.utils.sqs_utils import send_message_to_sqs

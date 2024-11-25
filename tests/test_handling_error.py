@@ -9,7 +9,7 @@ from src.models.cgd_rta_pro_archivos import CGDRtaProArchivos
 
 
 class TestErrorHandlingService(unittest.TestCase):
-    @patch('src.aws.clients.AWSClients.get_ssm_client')
+    @patch('src.services.aws_clients_service.AWSClients.get_ssm_client')
     def setUp(self, mock_get_ssm_client):
         # Mock de la base de datos
 
@@ -39,7 +39,7 @@ class TestErrorHandlingService(unittest.TestCase):
     @patch("src.utils.sqs_utils.send_message_to_sqs")
     @patch("src.utils.sqs_utils.delete_message_from_sqs")
     @patch("src.utils.sqs_utils.build_email_message")
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_handle_file_error(self, mock_logger, mock_build_email_message, mock_delete_message_from_sqs,
                                mock_send_message_to_sqs):
         # Datos de entrada para la función
@@ -77,7 +77,7 @@ class TestErrorHandlingService(unittest.TestCase):
         # Verificar que se obtuvo el error del catálogo
         self.service.catalogo_error_repository.get_error_by_code.assert_called_once_with(codigo_error)
 
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_handle_unzip_error(self, mock_logger):
         # Datos de entrada para la función
         id_archivo = 123
