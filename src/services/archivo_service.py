@@ -32,62 +32,30 @@ class ArchivoService:
         self.estado_archivo_repository = ArchivoEstadoRepository(db)
         self.rta_procesamiento_repository = RtaProcesamientoRepository(db)
 
-        # obtener parametros de reintentos
-        retries_config = self.archivo_validator.get_retry_parameters(env.PARAMETER_STORE_RETRY_CONFIG)
-        self.max_retries = int(retries_config.get("number-retries", 5))
-        self.retry_delay = int(retries_config.get("time-between-retry", 900))
-
     def validar_y_procesar_archivo(self, event):
         """Valida y procesa el archivo recibido."""
-        attempt_count = 0
 
-        while attempt_count < self.max_retries:
-            try:
-                # Extraer detalles del evento
-                file_name, bucket, receipt_handle, acg_nombre_archivo = (
-                    self.extract_event_details(event)
-                )
-                # Validar datos del evento
-                if not self.validate_event_data(file_name, bucket, receipt_handle):
-                    return
-                # Validar existencia del archivo en el bucket
-                if not self.validate_file_existence_in_bucket(file_name, bucket, receipt_handle):
-                    return
+        # Extraer detalles del evento
+        file_name, bucket, receipt_handle, acg_nombre_archivo = (
+            self.extract_event_details(event)
+        )
+        # Validar datos del evento
+        if not self.validate_event_data(file_name, bucket, receipt_handle):
+            return
+        # Validar existencia del archivo en el bucket
+        if not self.validate_file_existence_in_bucket(file_name, bucket, receipt_handle):
+            return
 
-                # Si el archivo es especial
-                if self.archivo_validator.is_special_prefix(file_name):
-                    self.process_special_file(
-                        file_name, bucket, receipt_handle, acg_nombre_archivo
-                    )
-                else:
-                    # Si el archivo es general
-                    self.process_general_file(
-                        file_name, bucket, receipt_handle, acg_nombre_archivo
-                    )
-                return
-            except Exception:
-                attempt_count += 1
-                if attempt_count < self.max_retries:
-                    logger.error(
-                        f"Error al procesar el archivo; reintentando en {self.retry_delay} segundos."
-                    )
-                    time.sleep(self.retry_delay)
-                else:
-                    logger.error(
-                        "Error al procesar el archivo; se superó el número máximo de reintentos.",
-                        extra={"event_filename": file_name},
-                    )
-                    self.error_handling_service.handle_error_master(
-                        id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
-                        filekey=f"{env.DIR_RECEPTION_FILES}/{file_name}",
-                        bucket=bucket,
-                        receipt_handle=receipt_handle,
-                        codigo_error=env.CONST_COD_ERROR_TECHNICAL,
-                        filename=file_name,
-                    )
-                    delete_message_from_sqs(
-                        receipt_handle, env.SQS_URL_PRO_RESPONSE_TO_PROCESS, file_name
-                    )
+        # Si el archivo es especial
+        if self.archivo_validator.is_special_prefix(file_name):
+            self.process_special_file(
+                file_name, bucket, receipt_handle, acg_nombre_archivo
+            )
+        else:
+            # Si el archivo es general
+            self.process_general_file(
+                file_name, bucket, receipt_handle, acg_nombre_archivo
+            )
 
     # =======================================================================
     #                          FUNCIONES AUXILIARES
