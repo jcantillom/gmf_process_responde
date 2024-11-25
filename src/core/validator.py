@@ -32,8 +32,8 @@ class ArchivoValidator:
         parameter_name = env.PARAMETER_STORE_FILE_CONFIG
 
         try:
-            response = self.ssm_client.get_parameter(Name=parameter_name)
-            parameter_data = json.loads(response['Parameter']['Value'], WithDecryption=True)
+            response = self.ssm_client.get_parameter(Name=parameter_name, WithDecryption=True)
+            parameter_data = json.loads(response['Parameter']['Value'])
 
             special_start = parameter_data.get(env.SPECIAL_START_NAME, "")
             special_end = parameter_data.get(env.SPECIAL_END_NAME, "")
@@ -57,7 +57,7 @@ class ArchivoValidator:
         try:
             ssm_client = AWSClients.get_ssm_client()
             response = ssm_client.get_parameter(Name=parameter_name, WithDecryption=True)
-            parameter_data = json.loads(response['Parameter']['Value'], WithDecryption=True)
+            parameter_data = json.loads(response['Parameter']['Value'])
             return parameter_data
         except ClientError as e:
             logger.error(f"Error al obtener el parámetro  de reintento {parameter_name}: {e}")
@@ -175,8 +175,8 @@ class ArchivoValidator:
         parameter_name = env.PARAMETER_STORE_FILE_CONFIG
 
         try:
-            response = self.ssm_client.get_parameter(Name=parameter_name)
-            parameter_data = json.loads(response['Parameter']['Value'], WithDecryption=True)
+            response = self.ssm_client.get_parameter(Name=parameter_name, WithDecryption=True)
+            parameter_data = json.loads(response['Parameter']['Value'])
             valid_states = parameter_data.get(env.VALID_STATES_FILES, [])
             logger.debug(f"estados válidos: {valid_states}")
             return valid_states

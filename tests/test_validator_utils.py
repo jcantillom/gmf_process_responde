@@ -90,7 +90,7 @@ class TestArchivoValidator(unittest.TestCase):
         validator = ArchivoValidator()
 
         # Verificar que se llamó a get_parameter con el nombre correcto
-        mock_ssm.get_parameter.assert_called_once_with(Name=parameter_name)
+        mock_ssm.get_parameter.assert_called_once_with(Name=parameter_name, WithDecryption=True)
 
     # test is_special_prefix
     def test_is_special_prefix(self):

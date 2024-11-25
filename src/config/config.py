@@ -6,11 +6,12 @@ from src.utils.logger_utils import get_logger
 
 logger = get_logger(__name__)
 
+
 class EnvironmentSettings(BaseSettings):
     """
     Clase para definir las variables de entorno del proyecto.
     """
-    APP_ENV: str = "test"  # Valor por defecto
+    APP_ENV: str = "test"
     SECRETS_DB: str = "default_secret_db"
     DB_HOST: str = "localhost"
     DB_PORT: int = 5432
@@ -18,7 +19,7 @@ class EnvironmentSettings(BaseSettings):
     DEBUG_MODE: bool = True
     SQS_URL_PRO_RESPONSE_TO_PROCESS: str = ""
     SQS_URL_EMAILS: str = ""
-    PARAMETER_STORE_FILE_CONFIG: str ="/gmf/process-responses/general-config"
+    PARAMETER_STORE_FILE_CONFIG: str = "/gmf/process-responses/general-config"
     SPECIAL_START_NAME: str = ""
     SPECIAL_END_NAME: str = ""
     GENERAL_START_NAME: str = ""
@@ -60,12 +61,7 @@ class EnvironmentSettings(BaseSettings):
     CONST_COD_ERROR_TECHNICAL: str = ""
 
     class Config:
-        # Solo usar .env si APP_ENV no es "test" ni "pipeline"
-        @staticmethod
-        def customise_sources(init_settings, env_settings, file_secret_settings):
-            if os.getenv("APP_ENV") in ["test", "pipeline"]:
-                return env_settings,
-            return env_settings, file_secret_settings
+        env_file = ".env"
 
 
 try:
