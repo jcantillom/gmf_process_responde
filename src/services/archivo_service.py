@@ -18,6 +18,7 @@ from src.repositories.archivo_estado_repository import ArchivoEstadoRepository
 from src.repositories.rta_procesamiento_repository import RtaProcesamientoRepository
 from ..models.cgd_archivo import CGDArchivo
 import sys
+import time
 
 logger = get_logger(env.DEBUG_MODE)
 
@@ -68,8 +69,7 @@ class ArchivoService:
                 attempt_count += 1
                 if attempt_count < self.max_retries:
                     logger.error(
-                        f"Error al procesar el archivo; reintentando en {self.retry_delay} segundos.",
-                        extra={"event_filename": file_name},
+                        f"Error al procesar el archivo; reintentando en {self.retry_delay} segundos."
                     )
                     time.sleep(self.retry_delay)
                 else:
