@@ -40,3 +40,19 @@ class CGDRtaProArchivosRepository:
         if archivo:
             archivo.estado = env.CONST_ESTADO_SEND
             self.db.commit()
+
+    def get_files_loaded_for_response(self, id_archivo: int, id_rta_procesamiento: int) -> list:
+        """
+        Válida si ya existen archivos cargados para un ID_ARCHIVO y un ID_RTA_PROCESAMIENTO específicos.
+
+        :param id_archivo: ID del archivo (file_id).
+        :param id_rta_procesamiento: ID de la respuesta de procesamiento (response_processing_id).
+        :return: True si existen archivos cargados, False en caso contrario.
+        """
+        # Consulta para verificar si existen registros en la tabla CGD_RTA_PRO_ARCHIVOS
+        result = self.db.query(CGDRtaProArchivos).filter(
+            CGDRtaProArchivos.id_archivo == id_archivo,
+            CGDRtaProArchivos.id_rta_procesamiento == id_rta_procesamiento
+        ).all()
+
+        return result

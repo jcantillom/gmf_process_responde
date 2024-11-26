@@ -1,4 +1,7 @@
 from datetime import datetime
+
+from hamcrest import is_in
+
 from src.repositories.archivo_repository import ArchivoRepository
 from src.services.s3_service import S3Utils
 from src.core.process_event import (
@@ -7,6 +10,7 @@ from src.core.process_event import (
     extract_date_from_filename,
     create_file_id,
     build_acg_name_if_general_file,
+    extract_and_validate_event_data,
 )
 from src.utils.sqs_utils import delete_message_from_sqs, send_message_to_sqs
 from src.core.validator import ArchivoValidator
@@ -16,9 +20,11 @@ from src.config.config import env
 from .error_handling_service import ErrorHandlingService
 from src.repositories.archivo_estado_repository import ArchivoEstadoRepository
 from src.repositories.rta_procesamiento_repository import RtaProcesamientoRepository
+from src.repositories.cgd_rta_pro_archivos_repository import CGDRtaProArchivosRepository
 from ..models.cgd_archivo import CGDArchivo
 import sys
 import time
+import json
 
 logger = get_logger(env.DEBUG_MODE)
 
@@ -31,6 +37,7 @@ class ArchivoService:
         self.error_handling_service = ErrorHandlingService(db)
         self.estado_archivo_repository = ArchivoEstadoRepository(db)
         self.rta_procesamiento_repository = RtaProcesamientoRepository(db)
+        self.rta_pro_archivos_repository = CGDRtaProArchivosRepository(db)
 
         # obtener parametros de reintentos
         retries_config = self.archivo_validator.get_retry_parameters(env.PARAMETER_STORE_RETRY_CONFIG)
@@ -54,6 +61,30 @@ class ArchivoService:
                 if not self.validate_file_existence_in_bucket(file_name, bucket, receipt_handle):
                     return
 
+                # Validar si el archivo es un re-procesamiento
+                if self.validate_is_reprocessing(event):
+
+                    # Validar si el evento contiene el file_id y el response_processing_id
+                    if self.validate_file_id_and_response_processing_id(event):
+                        logger.debug(
+                            "*** El archivo es un re-procesamiento y ya se encuentra registrado en la base de datos.***"
+                        )
+                        # procesar archivo re-procesamiento
+                        self.handle_reprocessing_with_ids(event, acg_nombre_archivo)
+
+                        if self.validate_rta_pro_archivos_existence(event):
+                            print("Ya existen archivos cargados para este ID_ARCHIVO y este ID_RTA_PROCESAMIENTO.")
+
+
+
+
+
+                    else:
+                        logger.warning(
+                            "El archivo es un re-procesamiento pero no se encuentra registrado en la base de datos."
+                        )
+                        # Continuar con el procesamiento normal
+
                 # Si el archivo es especial
                 if self.archivo_validator.is_special_prefix(file_name):
                     self.process_special_file(
@@ -68,6 +99,7 @@ class ArchivoService:
             except Exception as e:
                 attempt_count += 1
                 if attempt_count < self.max_retries:
+                    print(e)
                     logger.error(f"Error al procesar el archivo; reintentando en {self.retry_delay} segundos.")
 
                     # Reenviar el mensaje con el contador de reintentos incrementado
@@ -266,7 +298,6 @@ class ArchivoService:
                 )
                 + 1
         )
-
         # Insertar en CGD_ARCHIVO_ESTADOS
         self.estado_archivo_repository.insert_estado_archivo(
             id_archivo=int(archivo_id),
@@ -496,3 +527,106 @@ class ArchivoService:
             receipt_handle,
             self.error_handling_service,
         )
+
+    def validate_is_reprocessing(self, event):
+        """
+        Valida si el archivo es un re-procesamiento.
+        valida si en el evento se encuentra la clave is_processing con valor True.
+        """
+        records_data = extract_and_validate_event_data(event, required_keys=["is_processing"])
+        for record in records_data:
+            if record.get("is_processing", False):
+                logger.warning("El archivo es un re-procesamiento.")
+                return True
+        return False
+
+    def validate_file_id_and_response_processing_id(self, event):
+        """
+        Valida si el evento contiene el file_id y el response_processing_id.
+        """
+        records_data = extract_and_validate_event_data(event, required_keys=["file_id", "response_processing_id"])
+        for record in records_data:
+            file_id = record.get("file_id")
+            response_processing_id = record.get("response_processing_id")
+            # Validar explícitamente si los valores son None o inválidos
+            if not file_id or not response_processing_id:
+                logger.warning(
+                    "El evento no contiene valores válidos para file_id o response_processing_id.",
+                    extra={"file_id": file_id, "response_processing_id": response_processing_id},
+                )
+                return False
+        return bool(records_data)
+
+    def handle_reprocessing_with_ids(self, event, acg_nombre_archivo):
+        """
+        Maneja el re-procesamiento de un archivo que ya se encuentra registrado en la base de datos.
+        """
+        records_data = extract_and_validate_event_data(event, required_keys=["file_id", "response_processing_id"])
+        for record in records_data:
+            file_id = record.get("file_id")
+            response_processing_id = record.get("response_processing_id")
+            acg_nombre_archivo = build_acg_name_if_general_file(acg_nombre_archivo)
+
+            # obtener el estado del archivo
+            estado = self.get_estado_archivo(acg_nombre_archivo)
+
+            # Insertar en CGD_ARCHIVO_ESTADOS
+            self.estado_archivo_repository.insert_estado_archivo(
+                id_archivo=int(file_id),
+                estado_inicial=estado,
+                estado_final=env.CONST_ESTADO_LOAD_RTA_PROCESSING,
+                fecha_cambio_estado=datetime.now(),
+            )
+            logger.debug(
+                "Se inserta el estado del archivo en CGD_ARCHIVO_ESTADOS",
+                extra={"file_id": file_id},
+            )
+
+            # Actualizar el estado del archivo en CGD_ARCHIVO.
+            self.archivo_repository.update_estado_archivo(
+                acg_nombre_archivo, env.CONST_ESTADO_LOAD_RTA_PROCESSING, 0
+            )
+            last_counter = (
+                    self.rta_procesamiento_repository.get_last_contador_intentos_cargue(
+                        int(file_id)
+                    )
+                    + 1
+            )
+            # Actualizar el estado de la respuesta de procesamiento
+            self.rta_procesamiento_repository.update_state_rta_procesamiento(
+                int(file_id), env.CONST_ESTADO_INICIADO
+            )
+            self.rta_procesamiento_repository.update_contador_intentos_cargue(
+                int(file_id), last_counter
+            )
+
+    def process_existing_files(self, event):
+        """
+        Procesa los archivos existentes asociados a los ID_ARCHIVO y ID_RTA_PROCESAMIENTO específicos.
+
+        :param event: Evento con los detalles de los archivos y respuestas de procesamiento.
+        """
+        records_data = extract_and_validate_event_data(event, required_keys=["file_id", "response_processing_id"])
+        for record in records_data:
+            file_id = record.get("file_id")
+            response_processing_id = record.get("response_processing_id")
+
+            # Obtener los registros asociados a los IDs
+            loaded_files = self.rta_pro_archivos_repository.get_files_loaded_for_response(
+                int(file_id), int(response_processing_id)
+            )
+
+            if loaded_files:
+                logger.warning(
+                    f"Archivos existentes encontrados para file_id={file_id}, "
+                    f"response_processing_id={response_processing_id}",
+                    extra={"file_id": file_id, "response_processing_id": response_processing_id},
+                )
+
+                # Reutilizar la lógica de envío de mensajes para cada archivo encontrado
+                for file in loaded_files:
+                    self.cgd_rta_pro_archivos_service.send_pending_files_to_queue_by_id(
+                        id_archivo=file.id_archivo,
+                        queue_url=env.SQS_URL_PRO_RESPONSE_TO_UPLOAD,
+                        destination_folder=file.destination_folder,  # Ajustar según la estructura de tu base de datos
+                    )

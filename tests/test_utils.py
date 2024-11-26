@@ -10,6 +10,7 @@ from src.core.process_event import (
     create_file_id,
     extract_consecutivo_plataforma_origen,
     build_acg_name_if_general_file,
+    extract_and_validate_event_data,
 )
 from src.utils.sqs_utils import (
     delete_message_from_sqs,
@@ -553,3 +554,60 @@ class TestS3UtilsZip(unittest.TestCase):
 
         # Verificar que se manejó el error de cantidad de archivos inesperada
         self.error_handling_service.handle_generic_error.assert_called_once()
+
+
+class TestExtractAndValidateEventData(unittest.TestCase):
+    def setUp(self):
+        self.valid_event = {
+            "Records": [
+                {"body": json.dumps({"file_id": 123, "response_processing_id": 456})},
+                {"body": json.dumps({"file_id": 789, "response_processing_id": 101})},
+            ]
+        }
+
+        self.invalid_event = {
+            "Records": [
+                {"body": json.dumps({"file_id": 123})},  # Falta response_processing_id
+                {"body": "INVALID_JSON"},  # Body mal formado
+            ]
+        }
+
+        self.empty_event = {"Records": []}
+
+    @patch("src.utils.logger_utils.logging.warning")
+    @patch("src.utils.logger_utils.logging.error")
+    def test_valid_event(self, mock_error, mock_warning):
+        result = extract_and_validate_event_data(self.valid_event, required_keys=["file_id", "response_processing_id"])
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]["file_id"], 123)
+        self.assertEqual(result[0]["response_processing_id"], 456)
+        self.assertEqual(result[1]["file_id"], 789)
+        self.assertEqual(result[1]["response_processing_id"], 101)
+        mock_error.assert_not_called()
+        mock_warning.assert_not_called()
+
+    @patch("src.utils.logger_utils.logging.warning")
+    @patch("src.utils.logger_utils.logging.error")
+    def test_empty_event(self, mock_error, mock_warning):
+        result = extract_and_validate_event_data(self.empty_event, required_keys=["file_id", "response_processing_id"])
+        self.assertEqual(result, [])
+        mock_error.assert_not_called()
+        mock_warning.assert_not_called()
+
+    @patch("src.utils.logger_utils.logging.warning")
+    @patch("src.utils.logger_utils.logging.error")
+    def test_no_required_keys(self, mock_error, mock_warning):
+        result = extract_and_validate_event_data(self.valid_event)
+        self.assertEqual(len(result), 2)  # Sin claves requeridas, acepta todo
+        mock_error.assert_not_called()
+        mock_warning.assert_not_called()
+
+    @patch("src.core.process_event.logger.warning")
+    @patch("src.core.process_event.logger.error")
+    def test_invalid_event(self, mock_warning, mock_error):
+        result = extract_and_validate_event_data(
+            self.invalid_event, required_keys=["file_id", "response_processing_id"]
+        )
+        self.assertEqual(result, [])
+        mock_error.assert_called_once()
+        mock_warning.assert_called_once()

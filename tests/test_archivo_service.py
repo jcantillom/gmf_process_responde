@@ -5,6 +5,8 @@ from unittest.mock import patch, MagicMock
 
 from src.config.config import env
 from src.services.archivo_service import ArchivoService
+from src.core.validator import ArchivoValidator
+
 
 
 class TestValidateEventData(unittest.TestCase):
@@ -968,4 +970,4 @@ class TestValidarYProcesarArchivo(unittest.TestCase):
         # Llamar a la función
         self.service.validar_y_procesar_archivo(event)
 
-#
+
