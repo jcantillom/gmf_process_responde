@@ -1,9 +1,10 @@
+import os.path
 import re
 import json
 from datetime import datetime
 from botocore.exceptions import ClientError
-from src.aws.clients import AWSClients
-from src.logs.logger import get_logger
+from src.services.aws_clients_service import AWSClients
+from src.utils.logger_utils import get_logger
 from src.config.config import env
 
 logger = get_logger(env.DEBUG_MODE)
@@ -31,7 +32,7 @@ class ArchivoValidator:
         parameter_name = env.PARAMETER_STORE_FILE_CONFIG
 
         try:
-            response = self.ssm_client.get_parameter(Name=parameter_name)
+            response = self.ssm_client.get_parameter(Name=parameter_name, WithDecryption=True)
             parameter_data = json.loads(response['Parameter']['Value'])
 
             special_start = parameter_data.get(env.SPECIAL_START_NAME, "")
@@ -47,6 +48,20 @@ class ArchivoValidator:
         except ClientError as e:
             logger.error(f"Error al obtener el parámetro {parameter_name}: {e}")
             return "", "", "", {}
+
+    @staticmethod
+    def get_retry_parameters(parameter_name: str) -> dict:
+        """
+        Obtiene los parámetros de configuración de reintentos desde Parameter Store.
+        """
+        try:
+            ssm_client = AWSClients.get_ssm_client()
+            response = ssm_client.get_parameter(Name=parameter_name, WithDecryption=True)
+            parameter_data = json.loads(response['Parameter']['Value'])
+            return parameter_data
+        except ClientError as e:
+            logger.error(f"Error al obtener el parámetro  de reintento {parameter_name}: {e}")
+            return {"number-retries": "5", "time-between-retry": "900"}
 
     @staticmethod
     def is_special_prefix(filename: str) -> bool:
@@ -96,23 +111,28 @@ class ArchivoValidator:
             logger.debug(f"La fecha {fecha_str} en el archivo {filename} es mayor a la fecha actual.")
             return False
 
-        logger.debug(f"El archivo {filename} cumple con la estructura de archivo especial.")
+        logger.debug("El archivo cumple con la estructura de archivo especial.",
+                     extra={"event_filename": {
+                         "filename": filename,
+                         "fecha_str": fecha_str,
+                     }})
         return True
 
-    def is_general_file(self, filename: str) -> bool:
+    def validate_filename_structure_for_general_file(self, filename: str) -> bool:
         """
-        Verifica si el archivo cumple con la estructura definida para archivos generales.
+        Verifica si el archivo cumple con la estructura del nombre definida para archivos generales.
+        Ahora también acepta nombres de archivo que terminan en '-R'.
         """
         # Remueve el sufijo .zip si está presente
         if filename.endswith(".zip"):
             filename = filename[:-4]
 
-        # Definir el patrón de archivo general
-        expected_pattern = f"^{self.general_start}(\\d{{8}})-\\d{{4}}$"
+        # Definir el patrón de archivo general, permitiendo '-R' opcionalmente
+        expected_pattern = f"^{self.general_start}(\\d{{8}})-\\d{{4}}(-R)?$"
 
         match = re.match(expected_pattern, filename)
         if not match:
-            logger.debug(f"El archivo {filename} no cumple con la estructura de un archivo general.")
+            logger.debug(f"El archivo {filename} no cumple con el patrón de estructura general: {expected_pattern}")
             return False
 
         # Extraer la fecha del nombre de archivo y validar que no sea mayor a la fecha actual
@@ -121,7 +141,13 @@ class ArchivoValidator:
             logger.debug(f"La fecha {fecha_str} en el archivo {filename} es mayor a la fecha actual.")
             return False
 
-        logger.debug(f"El archivo {filename} cumple con la estructura de archivo general.")
+        logger.debug(
+            "El archivo cumple con la estructura de archivo general y la fecha en el nombre es válida.",
+            extra={"event_filename": {
+                "filename": filename,
+                "fecha_str": fecha_str,
+            }}
+        )
         return True
 
     @staticmethod
@@ -149,10 +175,10 @@ class ArchivoValidator:
         parameter_name = env.PARAMETER_STORE_FILE_CONFIG
 
         try:
-            response = self.ssm_client.get_parameter(Name=parameter_name)
+            response = self.ssm_client.get_parameter(Name=parameter_name, WithDecryption=True)
             parameter_data = json.loads(response['Parameter']['Value'])
             valid_states = parameter_data.get(env.VALID_STATES_FILES, [])
-            logger.debug(f"Cargando estados válidos: {valid_states}")
+            logger.debug(f"estados válidos: {valid_states}")
             return valid_states
         except ClientError as e:
             logger.error(f"Error al obtener el parámetro {parameter_name}: {e}")
@@ -177,13 +203,14 @@ class ArchivoValidator:
         Obtiene el tipo de respuesta del archivo.
         """
         if self.is_special_prefix(filename):
-            return "03"
+            return env.CONST_TIPO_ARCHIVO_ESPECIAL
         elif filename.startswith(env.CONST_PRE_GENERAL_FILE) and filename.endswith("-R.zip"):
-            return "02"
+            return env.CONST_TIPO_ARCHIVO_GENERAL_REINTEGROS
         elif filename.startswith(env.CONST_PRE_GENERAL_FILE):
-            return "01"
+            return env.CONST_TIPO_ARCHIVO_GENERAL
         else:
-            return "00"
+            logger.error("El archivo no cumple con ninguna estructura de tipo de respuesta.",
+                         extra={"event_filename": {"filename": filename}})
 
     def is_valid_extracted_filename(self, extracted_filename: str, tipo_respuesta: str,
                                     acg_nombre_archivo: str) -> bool:
@@ -218,4 +245,48 @@ class ArchivoValidator:
         logger.debug(
             f"El archivo {extracted_filename} cumple con todas las validaciones de estructura para tipo {tipo_respuesta}."
         )
+        return True
+
+    def validar_archivos_in_zip(self, extracted_filename: str, tipo_respuesta: str,
+                                acg_nombre_archivo: str) -> bool:
+        """
+        Valida los archivos contenidos en un archivo zip.
+        """
+        if not extracted_filename.startswith("RE_"):
+            logger.error(f"El archivo {extracted_filename} no comienza con 'RE_'.")
+            return False
+
+        nombre_base_zip = os.path.splitext(os.path.basename(acg_nombre_archivo))[0]
+
+        nombre_base_zip_sin_prefijo = nombre_base_zip
+
+        # elimina el prefijo 'ESP_' o "PRO" del nombre del archivo
+        if nombre_base_zip.startswith(env.CONST_PRE_SPECIAL_FILE):
+            nombre_base_zip_sin_prefijo = nombre_base_zip.replace(env.CONST_PRE_SPECIAL_FILE + "_", "")
+        elif nombre_base_zip.startswith(env.CONST_PRE_GENERAL_FILE):
+            nombre_base_zip_sin_prefijo = nombre_base_zip.replace(env.CONST_PRE_GENERAL_FILE + "_", "")
+
+        # veriricar si nombre_base_zip_sin_prefijo esta en extracted_filename
+        if nombre_base_zip_sin_prefijo not in extracted_filename:
+            logger.error(f"El archivo {extracted_filename} no contiene el nombre base {nombre_base_zip_sin_prefijo}.",
+                         extra={"event_filename": {"filename": acg_nombre_archivo}})
+            return False
+
+        # verificar si el archivo tiene el sufijo correcto
+        valid_suffixes = self.valid_file_suffixes.get(tipo_respuesta, [])
+        logger.debug(f"Sufijos válidos para tipo {tipo_respuesta}: {valid_suffixes}",
+                     extra={"event_filename": acg_nombre_archivo})
+
+        suffix_match = any(extracted_filename.endswith(f"-{suffix}.txt") for suffix in valid_suffixes)
+
+        if not suffix_match:
+            logger.error(
+                f"El archivo {extracted_filename} no finaliza con un sufijo válido para tipo {tipo_respuesta}.",
+                extra={"event_filename": acg_nombre_archivo})
+            return False
+
+        logger.debug(
+            f"El archivo {extracted_filename} cumple con todas las validaciones de estructura para tipo {tipo_respuesta}.",
+            extra={"event_filename": acg_nombre_archivo})
+
         return True

@@ -1,11 +1,14 @@
-import sys
-
 from src.models.cgd_rta_procesamiento import CGDRtaProcesamiento
+from src.models.cgd_rta_pro_archivos import CGDRtaProArchivos
 from .archivo_repository import ArchivoRepository
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 from sqlalchemy.orm import Session
-from src.utils.validator_utils import ArchivoValidator
+from src.core.validator import ArchivoValidator
 from src.config.config import env
+
+
+class ProcessingResponseNotFoundError(Exception):
+    pass
 
 
 class RtaProcesamientoRepository:
@@ -32,6 +35,7 @@ class RtaProcesamientoRepository:
     def insert_rta_procesamiento(
             self,
             id_archivo: int,
+            id_rta_procesamiento: int,
             nombre_archivo_zip: str,
             tipo_respuesta: str,
             estado: str,
@@ -42,17 +46,22 @@ class RtaProcesamientoRepository:
         Inserta una nueva respuesta de procesamiento en la tabla 'cgd_rta_procesamiento'.
 
         :param id_archivo: ID del archivo.
+        :param id_rta_procesamiento: ID de la respuesta de procesamiento.
         :param nombre_archivo_zip: Nombre del archivo ZIP.
         :param tipo_respuesta: Tipo de respuesta.
         :param estado: Estado de la respuesta.
         :param contador_intentos_cargue: Contador de intentos de cargue.
         :param codigo_error: Código de error. Por defecto, es None.
         :param detalle_error: Detalle del error. Por defecto, es None.
+
         """
-        fecha_recepcion = datetime.now()
+        # Definir la zona horaria de Colombia (UTC-5)
+        colombia_tz = timezone(timedelta(hours=-5))
+        fecha_recepcion = datetime.now(colombia_tz)
 
         nueva_rta_procesamiento = CGDRtaProcesamiento(
             id_archivo=id_archivo,
+            id_rta_procesamiento=id_rta_procesamiento,
             nombre_archivo_zip=nombre_archivo_zip,
             tipo_respuesta=tipo_respuesta,
             fecha_recepcion=fecha_recepcion,
@@ -72,15 +81,6 @@ class RtaProcesamientoRepository:
             # Revertir los cambios para mantener la consistencia en la base de datos
             self.db.rollback()
             raise e
-
-        # TODO: validar si es necesario actualizar el estado del archivo
-        # Actualizar el estado del archivo
-        # nombre_archivo = self.archivo_validator.build_acg_nombre_archivo(nombre_archivo_zip)
-        # self.archivo_repository.update_estado_archivo(
-        #     nombre_archivo,
-        #     estado,
-        #     contador_intentos_cargue
-        # )
 
     def update_state_rta_procesamiento(
             self,
@@ -103,7 +103,8 @@ class RtaProcesamientoRepository:
             last_entry.estado = estado
             self.db.commit()
         else:
-            raise Exception("No se encontró la respuesta de procesamiento")
+            raise ProcessingResponseNotFoundError(
+                f"No se encontró una respuesta de procesamiento para el archivo con ID {id_archivo}")
 
     def get_tipo_respuesta(self, id_archivo: int) -> str:
         """
@@ -136,18 +137,52 @@ class RtaProcesamientoRepository:
             .first()
         return last_entry.estado == env.CONST_ESTADO_SEND if last_entry else False
 
+    def get_last_rta_procesamiento_without_archivos(self, id_archivo: int, nombre_archivo_zip: str) -> int:
+        """
+        Obtiene el id_rta_procesamiento de la tabla CGD_RTA_PROCESAMIENTO basado en
+        el id_archivo y nombre_archivo_zip Y QUE NO TENGA REGISTRO EN CGD_RTA_PRO_ARCHIVOS.
+        """
+
+        result = self.db.query(CGDRtaProcesamiento.id_rta_procesamiento).join(
+            CGDRtaProArchivos,
+            (CGDRtaProcesamiento.id_archivo == CGDRtaProArchivos.id_archivo) & (
+                    CGDRtaProcesamiento.id_rta_procesamiento == CGDRtaProArchivos.id_rta_procesamiento),
+            isouter=True
+        ).filter(
+            CGDRtaProcesamiento.id_archivo == id_archivo,
+            CGDRtaProcesamiento.nombre_archivo_zip == nombre_archivo_zip).filter(
+            CGDRtaProArchivos.id_rta_procesamiento == None).order_by(
+            CGDRtaProcesamiento.id_rta_procesamiento.desc()
+        ).first()
+
+        return result.id_rta_procesamiento if result else None
+
     def get_id_rta_procesamiento_by_id_archivo(self, id_archivo: int, nombre_archivo_zip: str) -> int:
         """
         Obtiene el id_rta_procesamiento de la tabla CGD_RTA_PROCESAMIENTO basado en
         el id_archivo y nombre_archivo_zip.
-
-        Returns:
-            int: El id_rta_procesamiento si se encuentra, None en caso contrario.
         """
 
         result = self.db.query(CGDRtaProcesamiento.id_rta_procesamiento).filter(
             CGDRtaProcesamiento.id_archivo == id_archivo,
-            CGDRtaProcesamiento.nombre_archivo_zip == nombre_archivo_zip
-        ).first()
+            CGDRtaProcesamiento.nombre_archivo_zip == nombre_archivo_zip).order_by(
+            CGDRtaProcesamiento.id_rta_procesamiento.desc()).first()
 
         return result.id_rta_procesamiento if result else None
+
+    def get_last_rta_procesamiento(self, id_archivo: int):
+        """
+        Obtiene el último id_rta_procesamiento para un id_archivo dado.
+
+        Args:
+            id_archivo (int): El id_archivo para el que obtener el último id_rta_procesamiento.
+
+        Returns:
+            CGDRtaProcesamiento: El último registro de id_rta_procesamiento para el id_archivo dado.
+        """
+        # Realizamos una consulta para obtener el último id_rta_procesamiento para el id_archivo
+        last_rta_procesamiento = self.db.query(CGDRtaProcesamiento).filter(
+            CGDRtaProcesamiento.id_archivo == id_archivo
+        ).order_by(CGDRtaProcesamiento.id_rta_procesamiento.desc()).first()
+
+        return last_rta_procesamiento

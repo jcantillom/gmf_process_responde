@@ -1,6 +1,6 @@
 import unittest
 from unittest.mock import MagicMock
-from src.controllers.archivo_controller import process_sqs_message
+from src.core.archivo_controller import process_sqs_message
 from src.services.archivo_service import ArchivoService
 from sqlalchemy.orm import Session
 
@@ -24,7 +24,7 @@ class TestArchivoController(unittest.TestCase):
 
     def test_process_sqs_message_success(self):
         # Parchea el servicio para que use el mock en lugar de la implementación real
-        with unittest.mock.patch('src.controllers.archivo_controller.ArchivoService',
+        with unittest.mock.patch('src.core.archivo_controller.ArchivoService',
                                  return_value=self.archivo_service_mock):
             process_sqs_message(self.event, self.db_mock)
 
@@ -35,13 +35,9 @@ class TestArchivoController(unittest.TestCase):
             "Error en el procesamiento del archivo")
 
         # Parchea el servicio para que use el mock en lugar de la implementación real
-        with unittest.mock.patch('src.controllers.archivo_controller.ArchivoService',
+        with unittest.mock.patch('src.core.archivo_controller.ArchivoService',
                                  return_value=self.archivo_service_mock):
             with self.assertRaises(Exception) as context:
                 process_sqs_message(self.event, self.db_mock)
 
             self.assertIn("Error en el procesamiento del archivo", str(context.exception))
-
-
-if __name__ == '__main__':
-    unittest.main()

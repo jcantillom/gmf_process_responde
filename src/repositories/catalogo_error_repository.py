@@ -1,7 +1,6 @@
 from typing import Optional
 from sqlalchemy.orm import session
 from src.models.cgd_error_catalogo import CGDCatalogoErrores
-from src.connection.database import DataAccessLayer
 
 
 class CatalogoErrorRepository:

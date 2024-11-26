@@ -3,11 +3,12 @@ from sqlalchemy.engine import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm.session import Session
-from src.aws.clients import AWSClients
+from src.services.aws_clients_service import AWSClients
 from dotenv import load_dotenv
 from src.config.config import env
-from src.logs.logger import get_logger
+from src.utils.logger_utils import get_logger
 from src.utils.singleton import SingletonMeta
+from src.models.base import Base
 
 # Carga las variables de entorno
 load_dotenv()
@@ -49,7 +50,10 @@ class DataAccessLayer(metaclass=SingletonMeta):
                 expire_on_commit=False
             )()
 
-            logger.info("Conexión a la base de datos establecida 🚀")
+            # create tables
+            Base.metadata.create_all(self.engine)
+
+            logger.info("Conexión a la base de datos establecida")
         except Exception as e:
             logger.error("Error al establecer la conexión a la base de datos: %s", e)
             raise

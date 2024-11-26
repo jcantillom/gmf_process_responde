@@ -9,12 +9,25 @@ from src.models.cgd_rta_pro_archivos import CGDRtaProArchivos
 
 
 class TestErrorHandlingService(unittest.TestCase):
-
-    def setUp(self):
+    @patch('src.services.aws_clients_service.AWSClients.get_ssm_client')
+    def setUp(self, mock_get_ssm_client):
         # Mock de la base de datos
+
+        mock_ssm_client = MagicMock()
+        mock_get_ssm_client.return_value = mock_ssm_client
+
+        mock_ssm_client.get_parameter.return_value = {
+            'Parameter': {
+                'Value': '{"special_start": "RE_ESP",'
+                         ' "special_end": "0001", '
+                         '"general_start": "RE_GEN", '
+                         '"files-reponses-debito-reverso": "001,002", '
+                         '"files-reponses-reintegros": "R", '
+                         '"files-reponses-especiales": "ESP"}'
+            }
+        }
         self.mock_db = MagicMock(spec=Session)
         self.service = ErrorHandlingService(self.mock_db)
-
         # Mock de los repositorios y utilidades
         self.service.catalogo_error_repository.get_error_by_code = MagicMock()
         self.service.correo_parametro_repository.get_parameters_by_template = MagicMock()
@@ -26,7 +39,7 @@ class TestErrorHandlingService(unittest.TestCase):
     @patch("src.utils.sqs_utils.send_message_to_sqs")
     @patch("src.utils.sqs_utils.delete_message_from_sqs")
     @patch("src.utils.sqs_utils.build_email_message")
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_handle_file_error(self, mock_logger, mock_build_email_message, mock_delete_message_from_sqs,
                                mock_send_message_to_sqs):
         # Datos de entrada para la función
@@ -56,7 +69,7 @@ class TestErrorHandlingService(unittest.TestCase):
         self.service.archivo_validator.is_not_processed_state.return_value = True
 
         # Ejecutar la función que se está probando
-        self.service.handle_file_error(id_plantilla, filekey, bucket, receipt_handle, codigo_error, filename)
+        self.service.handle_error_master(id_plantilla, filekey, bucket, receipt_handle, codigo_error, filename)
 
         # Verificar que se movió el archivo a la carpeta de rechazados
         self.service.s3_utils.move_file_to_rechazados.assert_called_once_with(bucket, filekey)
@@ -64,7 +77,7 @@ class TestErrorHandlingService(unittest.TestCase):
         # Verificar que se obtuvo el error del catálogo
         self.service.catalogo_error_repository.get_error_by_code.assert_called_once_with(codigo_error)
 
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_handle_unzip_error(self, mock_logger):
         # Datos de entrada para la función
         id_archivo = 123
@@ -75,13 +88,15 @@ class TestErrorHandlingService(unittest.TestCase):
         contador_intentos_cargue = 2
 
         # Ejecutar la función que se está probando
-        self.service.handle_unzip_error(
+        self.service.handle_generic_error(
             id_archivo=id_archivo,
             filekey=filekey,
             bucket_name=bucket_name,
             receipt_handle=receipt_handle,
             file_name=file_name,
-            contador_intentos_cargue=contador_intentos_cargue
+            contador_intentos_cargue=contador_intentos_cargue,
+            codigo_error=env.CONST_COD_ERROR_UNEXPECTED_FILE_COUNT,
+            id_plantilla="template123"
         )
 
         # Verificar que se actualizó el estado de CGD_RTA_PROCESAMIENTO a "RECHAZADO"

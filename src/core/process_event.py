@@ -1,8 +1,8 @@
 import json
 import os
 import re
-
-from src.config.config import env
+from src.config.config import env, logger
+from src.core.validator import ArchivoValidator
 
 
 def extract_filename_from_body(body: str) -> str:
@@ -47,21 +47,35 @@ def extract_date_from_filename(filename: str) -> str:
     return ''
 
 
-def create_file_id(filename: str) -> int:
+def create_file_id(filename: str):
     """
     Crea un identificador único para un archivo.
 
     Returns:
         str: Un identificador único para un archivo.
     """
+    archivo_validator = ArchivoValidator()
     date = extract_date_from_filename(filename)
 
-    if date:
-        componente1 = "01"
-        componente2 = "05"
-        componente3 = "0001"
+    if not date:
+        logger.error("Fecha no encontrada en el nombre del archivo",
+                     extra={"filename": filename})
+        return
 
-        return int(f"{date}{componente1}{componente2}{componente3}")
+    componente1 = env.CONST_PLATAFORMA_ORIGEN
+    componente2 = env.CONST_TIPO_ARCHIVO_ESPECIAL
+    componente3 = archivo_validator.special_end.zfill(4)
+
+    return int(f"{date}{componente1}{componente2}{componente3}")
+
+
+def build_acg_name_if_general_file(acg_nombre_archivo: str) -> str:
+    """
+    Esta Function se encarga de quitar el prefijo env.CONST_PRE_GENERAL_FILE,
+    al nombre del archivo.
+    """
+    acg_nombre_archivo = acg_nombre_archivo.replace(env.CONST_PRE_GENERAL_FILE, "")
+    return acg_nombre_archivo.lstrip("_")
 
 
 def extract_consecutivo_plataforma_origen(filename: str) -> str:

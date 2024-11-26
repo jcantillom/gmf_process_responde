@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, VARCHAR, BigInteger, SmallInteger, Numeric, ForeignKeyConstraint, Integer
+from sqlalchemy import Column, ForeignKey, VARCHAR, BigInteger, ForeignKeyConstraint, Integer
 from sqlalchemy.orm import relationship
 
 
@@ -20,8 +20,7 @@ class CGDRtaProArchivos(Base):
     codigo_error = Column(VARCHAR(30), ForeignKey("cgd_catalogo_errores.codigo_error"))
     detalle_error = Column(VARCHAR(2000))
 
-    # Relaciones
-    # catalogo_error = relationship("CGDCatalogoErrores", back_populates="rta_pro_archivos")
+    catalogo_error = relationship("CGDCatalogoErrores", back_populates="rta_pro_archivos")
 
     # Define la clave foránea compuesta
     __table_args__ = (

@@ -21,49 +21,24 @@ Este proyecto es una aplicación serverless desarrollada en **Python** que se ej
 ## Estructura del Proyecto
 ```plaintext
 .
-├── local/
-│   ├── __init__.py
-│   ├── load_event.py
-├── main.py
-├── requirements.txt
-├── README.md
-├── sonar-project.properties
-├── src/
-│   ├── aws/
-│   │   └── clients.py
-│   ├── config/
-│   │   ├── config.py
-│   │   └── lambda_init.py
-│   ├── connection/
-│   │   └── database.py
-│   ├── controllers/
-│   │   └── archivo_controller.py
-│   ├── logs/
-│   │   └── logger.py
-│   ├── models/
-│   │   ├── base.py
-│   │   ├── cgd_archivo.py
-│   │   └── cgd_correo_parametro.py
-│   ├── repositories/
-│   │   ├── archivo_repository.py
-│   │   ├── archivo_estado_repository.py
-│   │   ├── catalogo_error_repository.py
-│   │   └── rta_procesamiento_repository.py
-│   ├── services/
-│   │   ├── archivo_service.py
-│   │   └── error_handling_service.py
-│   └── utils/
-│       ├── event_utils.py
-│       ├── s3_utils.py
-│       ├── sqs_utils.py
-│       └── validator_utils.py
-├── test_data/
-│   └── event.json
-└── tests/
-    ├── test_archivo_service.py
-    ├── test_clients.py
-    ├── test_config.py
-    └── test_utils.py
+├── localstack_config.py         # Configuración para pruebas locales con LocalStack
+├── main.py                      # Punto de entrada principal de la Lambda
+├── requirements.txt             # Dependencias del proyecto
+├── sonar-project.properties     # Configuración para análisis de calidad con SonarQube
+├── src/                         # Código fuente principal
+│   ├── config/                  # Configuración de la aplicación
+│   │   ├── config.py            # Variables de entorno
+│   │   ├── lambda_init.py       # Inicialización de la Lambda
+│   └── core/                    # Lógica central del sistema
+│       ├── archivo_controller.py # Controlador principal de archivos
+│       ├── process_event.py     # Procesamiento de eventos
+│       └── validator.py         # Validaciones
+│   ├── models/                  # Modelos de datos (ORM)
+│   ├── repositories/            # Capa de acceso a la base de datos
+│   ├── services/                # Lógica de negocio y servicios
+│   └── utils/                   # Funciones auxiliares reutilizables
+└── tests/                       # Pruebas unitarias y de integración
+
 ```
 
 

@@ -4,7 +4,6 @@ from pydantic import ValidationError
 from src.config.config import EnvironmentSettings
 
 
-
 class TestEnvironmentSettings(unittest.TestCase):
 
     @patch.dict('os.environ', {
@@ -66,7 +65,3 @@ class TestEnvironmentSettings(unittest.TestCase):
         """Prueba que se lanza una excepción al cargar variables de entorno inválidas."""
         with self.assertRaises(ValidationError):
             EnvironmentSettings()
-
-
-if __name__ == '__main__':
-    unittest.main()

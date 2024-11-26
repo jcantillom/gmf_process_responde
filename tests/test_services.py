@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
-from src.services.cgd_rta_pro_archivo_service import CGDRtaProArchivosService
 from src.models.cgd_rta_pro_archivos import CGDRtaProArchivos
+from src.services.cgd_rta_pro_archivo_service import CGDRtaProArchivosService
 from src.config.config import env
 
 
@@ -15,7 +15,7 @@ class TestRegisterExtractedFiles(unittest.TestCase):
         # Mock del repositorio
         self.service.cgd_rta_pro_archivos_repository.insert = MagicMock()
 
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_register_extracted_files(self, mock_logger):
         # Datos de entrada para la función
         id_archivo = 123
@@ -76,7 +76,7 @@ class TestSendPendingFilesToQueue(unittest.TestCase):
         self.service.cgd_rta_pro_archivos_repository.update_estado_to_enviado = MagicMock()
 
     @patch("src.utils.sqs_utils.send_message_to_sqs")
-    @patch("src.logs.logger")
+    @patch("src.utils.logger_utils")
     def test_send_pending_files_to_queue(self, mock_logger, mock_send_message_to_sqs):
         # Datos de entrada
         id_archivo = 123

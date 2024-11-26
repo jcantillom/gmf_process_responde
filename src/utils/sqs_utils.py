@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Dict, List, Any
-from src.aws.clients import AWSClients
-from src.logs.logger import get_logger
+from src.services.aws_clients_service import AWSClients
+from src.utils.logger_utils import get_logger
 from src.config.config import env
 from src.models.cgd_correo_parametro import CGDCorreosParametros
 import json

@@ -1,11 +1,11 @@
 from src.repositories.catalogo_error_repository import CatalogoErrorRepository
 from src.repositories.correo_parametro_repository import CorreoParametroRepository
 from src.utils.sqs_utils import send_message_to_sqs, build_email_message, delete_message_from_sqs
-from src.utils.s3_utils import S3Utils
-from src.logs.logger import get_logger
+from src.services.s3_service import S3Utils
+from src.utils.logger_utils import get_logger
 from src.config.config import env
 from sqlalchemy.orm import Session
-from src.utils.validator_utils import ArchivoValidator
+from src.core.validator import ArchivoValidator
 from src.repositories.rta_procesamiento_repository import RtaProcesamientoRepository
 from src.repositories.archivo_repository import ArchivoRepository
 
@@ -21,7 +21,7 @@ class ErrorHandlingService:
         self.rta_procesamiento_repository = RtaProcesamientoRepository(db)
         self.archivo_repository = ArchivoRepository(db)
 
-    def handle_file_error(
+    def handle_error_master(
             self,
             id_plantilla: str,
             filekey: str,
@@ -33,7 +33,7 @@ class ErrorHandlingService:
         Realiza el manejo completo de un error de archivo:
         - Mueve el archivo a 'rechazados'
         - Elimina el mensaje de la cola
-        - Valida que el archivo no esté en estado 'procesado'
+        - Válida que el archivo no esté en estado 'procesado'
         - Envía un mensaje de error a la cola de SQS "emails-to-send"
         - Registra el error en el log.
         """
@@ -63,7 +63,7 @@ class ErrorHandlingService:
             logger.error("El archivo se encuentra en estado procesado",
                          extra={"filename": filename})
             return
-        logger.debug("Enviando mensaje de error a la cola de correos SQS 📧")
+        logger.debug("Enviando mensaje de error a la cola de correos SQS 'emails-to-send'")
 
         # Obtener parámetros de la plantilla
         mail_parameters = self.correo_parametro_repository.get_parameters_by_template(id_plantilla)
@@ -81,9 +81,8 @@ class ErrorHandlingService:
 
         # Enviar mensaje a SQS
         send_message_to_sqs(env.SQS_URL_EMAILS, message, filename)
-        logger.debug("Mensaje de error enviado a la cola de correos")
 
-    def handle_unzip_error(
+    def handle_generic_error(
             self,
             id_archivo: int,
             filekey: str,
@@ -91,27 +90,30 @@ class ErrorHandlingService:
             receipt_handle: str,
             file_name: str,
             contador_intentos_cargue: int,
-    ):
-
-        # actualiza el estado de CGD_RTA_PROCESAMIENTO a RECHAZADO
+            codigo_error: str,
+            id_plantilla: str):
+        """
+        Maneja errores de archivos y actualiza los estados en la base de datos.
+        """
+        # Actualiza el estado de CGD_RTA_PROCESAMIENTO a RECHAZADO
         self.rta_procesamiento_repository.update_state_rta_procesamiento(
             id_archivo=id_archivo,
             estado=env.CONST_ESTADO_REJECTED
         )
 
-        # actualiza el estado del archivo a PROCESAMIENTO_RECHAZADO
+        # Actualiza el estado del archivo a PROCESAMIENTO_RECHAZADO
         self.archivo_repository.update_estado_archivo(
             file_name,
             env.CONST_ESTADO_PROCESAMIENTO_RECHAZADO,
             contador_intentos_cargue=contador_intentos_cargue,
         )
 
-        # llamamos al error_handling para enviar el mensaje de error
-        self.handle_file_error(
-            id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
+        # Llama a handle_error_master para enviar el mensaje de error
+        self.handle_error_master(
+            id_plantilla=id_plantilla,
             filekey=filekey,
             bucket=bucket_name,
             receipt_handle=receipt_handle,
-            codigo_error=env.CONST_COD_ERROR_DECOMPRESION,
+            codigo_error=codigo_error,
             filename=file_name,
         )

@@ -7,7 +7,7 @@ class CGDRtaProcesamiento(Base):
     __tablename__ = "cgd_rta_procesamiento"
 
     id_archivo = Column(BigInteger, nullable=False)
-    id_rta_procesamiento = Column(Integer, Identity(start=1), primary_key=True)
+    id_rta_procesamiento = Column(Integer, Identity(start=1, increment=1), nullable=False)
     nombre_archivo_zip = Column(VARCHAR(100), nullable=False)
     tipo_respuesta = Column(VARCHAR(2), nullable=False)
     fecha_recepcion = Column(TIMESTAMP, nullable=False)

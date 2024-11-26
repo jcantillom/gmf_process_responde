@@ -1,6 +1,6 @@
 from sqlalchemy.orm import Session
 from src.models.cgd_rta_pro_archivos import CGDRtaProArchivos
-from src.logs.logger import get_logger
+from src.utils.logger_utils import get_logger
 from src.config.config import env
 from src.repositories.cgd_rta_pro_archivos_repository import CGDRtaProArchivosRepository
 from src.utils.sqs_utils import send_message_to_sqs
@@ -55,7 +55,7 @@ class CGDRtaProArchivosService:
         for file in pending_files:
             message_body = {
                 "bucket_name": env.S3_BUCKET_NAME,
-                "folder_name": destination_folder,
+                "folder_name": destination_folder.rstrip("/"),
                 "file_name": file.nombre_archivo,
                 "file_id": int(file.id_archivo),
                 "response_processing_id": int(file.id_rta_procesamiento),

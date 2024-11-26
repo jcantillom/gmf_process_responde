@@ -1,8 +1,7 @@
 import unittest
 import logging
-from unittest.mock import patch
 
-from src.logs.logger import CustomFormatter, get_logger
+from src.utils.logger_utils import CustomFormatter, get_logger
 
 
 class TestLoggerCustomFormat(unittest.TestCase):
@@ -104,7 +103,3 @@ class TestLogger(unittest.TestCase):
         self.assertIn("[DEBUG]", formatted_message)
         self.assertIn("[test/path/to/file.py:42]", formatted_message)
         self.assertIn("- Mensaje de prueba", formatted_message)
-
-
-if __name__ == '__main__':
-    unittest.main()

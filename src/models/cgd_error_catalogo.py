@@ -11,8 +11,7 @@ class CGDCatalogoErrores(Base):
     proceso = Column("proceso", VARCHAR(1000), nullable=False)
     aplica_reprogramar = Column("aplica_reprogramar", BOOLEAN, nullable=False)
 
-    # Relaciones
-    # rta_pro_archivos = relationship("CGDRtaProArchivos", back_populates="catalogo_error")
+    rta_pro_archivos = relationship("CGDRtaProArchivos", back_populates="catalogo_error")
     archivos = relationship("CGDArchivo", back_populates="catalogo_error")
 
     def __repr__(self):
