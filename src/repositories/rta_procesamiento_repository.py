@@ -186,3 +186,17 @@ class RtaProcesamientoRepository:
         ).order_by(CGDRtaProcesamiento.id_rta_procesamiento.desc()).first()
 
         return last_rta_procesamiento
+
+    # actualizar el contador de intentos de cargue
+    def update_contador_intentos_cargue(self, id_archivo: int, contador_intentos_cargue: int):
+        """
+        Actualiza el contador de intentos de cargue de una respuesta de procesamiento.
+
+        """
+        last_entry = self.get_last_rta_procesamiento(id_archivo)
+
+        last_entry.contador_intentos_cargue = contador_intentos_cargue
+
+        # Confirmamos los cambios en la base de datos
+        self.db.commit()
+        self.db.refresh(last_entry)

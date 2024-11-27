@@ -286,3 +286,46 @@ class S3Utils:
             )
             return None
         return extracted_files
+
+    # function para validar si hay archivos descomprimidos en la carpeta de procesando
+    def validate_decompressed_files_in_processing(
+            self,
+            bucket_name: str,
+            processing_folder: str,
+            archivo_base: str
+    ):
+        """
+        Valida si existen archivos descomprimidos en la carpeta 'Procesando' de S3
+        que correspondan al archivo base.
+
+        :param bucket_name: Nombre del bucket en S3.
+        :param processing_folder: Nombre de la carpeta 'Procesando' en el bucket.
+        :param archivo_base: Nombre base del archivo (sin extensión).
+        :return: True si la carpeta existe y contiene archivos, False si no hay carpeta o está vacía.
+        """
+        try:
+            archivo_base = archivo_base.rsplit(".zip", 1)[0]
+            # Generar el prefijo para buscar carpetas que contengan el nombre base del archivo
+            folder_prefix = f"{processing_folder}/{archivo_base}_"
+
+            # Depuración: imprimir prefijo que se está buscando
+            self.logger.debug(f"Buscando carpetas con prefijo: {folder_prefix}")
+            # Listar las carpetas en 'Procesando'
+            response = self.s3.list_objects_v2(Bucket=bucket_name, Prefix=folder_prefix)
+
+            # Depuración: imprimir respuesta completa de AWS S3
+            self.logger.debug(f"Respuesta S3: {response}")
+
+            # Verificar si hay objetos con el prefijo
+            if 'Contents' in response and len(response['Contents']) > 0:
+                self.logger.debug(f"Archivos encontrados: {[obj['Key'] for obj in response['Contents']]}")
+                return True
+
+            # Si no hay contenido, significa que no existen carpetas o están vacías
+            self.logger.debug(f"No se encontraron archivos con el prefijo {folder_prefix}.")
+            return False
+
+        except Exception as e:
+            self.logger.error(
+                f"Error al validar archivos descomprimidos para {archivo_base} en '{processing_folder}': {str(e)}")
+            return False

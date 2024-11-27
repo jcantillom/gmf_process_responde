@@ -12,6 +12,8 @@ from src.repositories.cgd_rta_pro_archivos_repository import CGDRtaProArchivosRe
 from src.repositories.correo_parametro_repository import CorreoParametroRepository
 from unittest.mock import patch, MagicMock
 from sqlalchemy.orm import Session
+from src.repositories.rta_procesamiento_repository import RtaProcesamientoRepository
+from src.models.cgd_rta_procesamiento import CGDRtaProcesamiento
 
 
 class TestArchivoEstadoRepository(unittest.TestCase):
@@ -241,4 +243,77 @@ class TestCorreoParametroRepository(unittest.TestCase):
         # Verifica que el resultado sea el esperado
         self.assertEqual(result, expected_parameters)
 
+
+class TestCGDRtaProArchivosRepository(unittest.TestCase):
+    def setUp(self):
+        # Crear un mock de la sesión de la base de datos
+        self.db_mock = MagicMock(spec=Session)
+        self.repository = CGDRtaProArchivosRepository(self.db_mock)
+
+    def test_has_files_loaded_for_response_true(self):
+        # Datos de prueba
+        id_archivo = 123
+        id_rta_procesamiento = 456
+
+        # Crear un mock del objeto CGDRtaProArchivos
+        mock_file = MagicMock(spec=CGDRtaProArchivos)
+        self.db_mock.query().filter().first.return_value = mock_file
+
+        # Llamar a la función
+        result = self.repository.get_files_loaded_for_response(id_archivo, id_rta_procesamiento)
+
+        # Verificar el resultado
+        self.assertTrue(result)
+        self.db_mock.query().filter().all.assert_called_once()
+
+    def test_has_files_loaded_for_response_false(self):
+        # Datos de prueba
+        id_archivo = 123
+        id_rta_procesamiento = 456
+
+        # Configurar el mock para devolver None
+        self.db_mock.query().filter().all.return_value = []
+
+        # Llamar a la función
+        result = self.repository.get_files_loaded_for_response(id_archivo, id_rta_procesamiento)
+
+        # Verificar el resultado
+        self.assertFalse(result)
+        self.db_mock.query().filter().all.assert_called_once()
+
+
+class TestRtaProcesamientoRepository(unittest.TestCase):
+    @patch(
+        'src.core.validator.ArchivoValidator._get_file_config_name',
+        return_value=("dummy_config", "dummy_dir", "dummy_prefix", "dummy_suffix"))
+    def setUp(self, mock_get_file_config_name):
+        # Crear un mock de la sesión de la base de datos
+        self.db_mock = MagicMock(spec=Session)
+        self.repository = RtaProcesamientoRepository(self.db_mock)
+
+    def test_update_contador_intentos_cargue(self):
+        # Datos de prueba
+        id_archivo = 123
+        contador_intentos_cargue = 5
+
+        # Crear un mock del objeto CGDRtaProcesamiento
+        mock_rta_procesamiento = MagicMock(spec=CGDRtaProcesamiento)
+        mock_rta_procesamiento.id_archivo = id_archivo
+        mock_rta_procesamiento.contador_intentos_cargue = 3  # Valor inicial
+
+        # Configurar el mock para get_last_rta_procesamiento
+        self.repository.get_last_rta_procesamiento = MagicMock(return_value=mock_rta_procesamiento)
+
+        # Llamar a la función
+        self.repository.update_contador_intentos_cargue(id_archivo, contador_intentos_cargue)
+
+        # Verificar que se actualizó el valor
+        self.assertEqual(mock_rta_procesamiento.contador_intentos_cargue, contador_intentos_cargue)
+
+        # Verificar que se llamaron commit y refresh
+        self.db_mock.commit.assert_called_once()
+        self.db_mock.refresh.assert_called_once_with(mock_rta_procesamiento)
+
+        # Verificar que get_last_rta_procesamiento fue llamado con el id correcto
+        self.repository.get_last_rta_procesamiento.assert_called_once_with(id_archivo)
 

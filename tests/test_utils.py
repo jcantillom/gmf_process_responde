@@ -10,11 +10,13 @@ from src.core.process_event import (
     create_file_id,
     extract_consecutivo_plataforma_origen,
     build_acg_name_if_general_file,
+    extract_and_validate_event_data,
 )
 from src.utils.sqs_utils import (
     delete_message_from_sqs,
     send_message_to_sqs,
     build_email_message,
+    send_message_to_sqs_with_delay,
 )
 from src.utils.singleton import SingletonMeta
 from src.services.error_handling_service import ErrorHandlingService
@@ -330,6 +332,27 @@ class TestSQSUtils(unittest.TestCase):
         actual_message = build_email_message(id_plantilla, error_data, mail_parameters, filename)
         self.assertEqual(actual_message, message)
 
+    @patch('src.services.aws_clients_service.AWSClients.get_sqs_client')
+    def test_send_message_to_sqs_with_delay(self, mock_get_sqs_client):
+        # Configura el mock
+        mock_sqs = MagicMock()
+        mock_get_sqs_client.return_value = mock_sqs
+
+        queue_url = 'http://example.com/sqs'
+        message_body = {'key': 'value'}
+        filename = 'test_file.txt'
+        delay_seconds = 10
+
+        # Llama a la función
+        send_message_to_sqs_with_delay(queue_url, message_body, filename, delay_seconds)
+
+        # Afirmaciones
+        mock_sqs.send_message.assert_called_once_with(
+            QueueUrl=queue_url,
+            MessageBody=json.dumps(message_body, ensure_ascii=False),
+            DelaySeconds=delay_seconds
+        )
+
 
 class TestS3Utils(unittest.TestCase):
     @patch('boto3.client')
@@ -433,6 +456,27 @@ class TestS3Utils(unittest.TestCase):
         self.assertTrue(destination.startswith(env.DIR_PROCESSING_FILES))
         self.s3_utils.s3.copy_object.assert_called_once()
         self.s3_utils.s3.delete_object.assert_called_once()
+
+    @patch('src.services.aws_clients_service.AWSClients.get_s3_client')
+    def test_validate_decompressed_files_in_processing(self, mock_s3_client):
+        # Simular el cliente S3
+        mock_s3 = MagicMock()
+        mock_s3_client.return_value = mock_s3
+
+        # Configurar el retorno para list_objects_v2
+        mock_s3.list_objects_v2.return_value = {
+            'Contents': [
+                {'Key': 'processing_folder/test_file_/file1.txt'}
+            ]
+        }
+
+        # Llamar a la función que se está probando
+        result = self.s3_utils.validate_decompressed_files_in_processing(
+            'test-bucket', 'processing_folder', 'test_file.zip'
+        )
+
+        # Verificar el resultado esperado
+        self.assertFalse(result)
 
 
 class TestS3UtilsZip(unittest.TestCase):
@@ -553,3 +597,60 @@ class TestS3UtilsZip(unittest.TestCase):
 
         # Verificar que se manejó el error de cantidad de archivos inesperada
         self.error_handling_service.handle_generic_error.assert_called_once()
+
+
+class TestExtractAndValidateEventData(unittest.TestCase):
+    def setUp(self):
+        self.valid_event = {
+            "Records": [
+                {"body": json.dumps({"file_id": 123, "response_processing_id": 456})},
+                {"body": json.dumps({"file_id": 789, "response_processing_id": 101})},
+            ]
+        }
+
+        self.invalid_event = {
+            "Records": [
+                {"body": json.dumps({"file_id": 123})},  # Falta response_processing_id
+                {"body": "INVALID_JSON"},  # Body mal formado
+            ]
+        }
+
+        self.empty_event = {"Records": []}
+
+    @patch("src.utils.logger_utils.logging.warning")
+    @patch("src.utils.logger_utils.logging.error")
+    def test_valid_event(self, mock_error, mock_warning):
+        result = extract_and_validate_event_data(self.valid_event, required_keys=["file_id", "response_processing_id"])
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]["file_id"], 123)
+        self.assertEqual(result[0]["response_processing_id"], 456)
+        self.assertEqual(result[1]["file_id"], 789)
+        self.assertEqual(result[1]["response_processing_id"], 101)
+        mock_error.assert_not_called()
+        mock_warning.assert_not_called()
+
+    @patch("src.utils.logger_utils.logging.warning")
+    @patch("src.utils.logger_utils.logging.error")
+    def test_empty_event(self, mock_error, mock_warning):
+        result = extract_and_validate_event_data(self.empty_event, required_keys=["file_id", "response_processing_id"])
+        self.assertEqual(result, [])
+        mock_error.assert_not_called()
+        mock_warning.assert_not_called()
+
+    @patch("src.utils.logger_utils.logging.warning")
+    @patch("src.utils.logger_utils.logging.error")
+    def test_no_required_keys(self, mock_error, mock_warning):
+        result = extract_and_validate_event_data(self.valid_event)
+        self.assertEqual(len(result), 2)  # Sin claves requeridas, acepta todo
+        mock_error.assert_not_called()
+        mock_warning.assert_not_called()
+
+    @patch("src.core.process_event.logger.warning")
+    @patch("src.core.process_event.logger.error")
+    def test_invalid_event(self, mock_warning, mock_error):
+        result = extract_and_validate_event_data(
+            self.invalid_event, required_keys=["file_id", "response_processing_id"]
+        )
+        self.assertEqual(result, [])
+        mock_error.assert_called_once()
+        mock_warning.assert_called_once()

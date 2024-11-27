@@ -1,4 +1,6 @@
 from datetime import datetime
+
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 from src.models.cgd_archivo import CGDArchivoEstado
 from src.utils.logger_utils import get_logger
@@ -13,14 +15,6 @@ class ArchivoEstadoRepository:
 
     def insert_estado_archivo(self, id_archivo: int, estado_inicial: str, estado_final: str,
                               fecha_cambio_estado: datetime = None) -> None:
-        """
-        Inserta un nuevo estado de archivo en la tabla 'cgd_archivo_estados'.
-
-        :param id_archivo: ID del archivo.
-        :param estado_inicial: Estado inicial del archivo.
-        :param estado_final: Estado final del archivo.
-        :param fecha_cambio_estado: Fecha del cambio de estado. Por defecto, se usa la fecha actual.
-        """
         if fecha_cambio_estado is None:
             fecha_cambio_estado = datetime.now()
 
@@ -31,7 +25,16 @@ class ArchivoEstadoRepository:
             fecha_cambio_estado=fecha_cambio_estado
         )
 
-        # Agrega y confirma el nuevo estado en la base de datos
-        self.db.add(nuevo_estado)
-        self.db.commit()
-        self.db.refresh(nuevo_estado)
+        try:
+            self.db.add(nuevo_estado)
+            self.db.commit()
+            self.db.refresh(nuevo_estado)
+        except IntegrityError as e:
+            self.db.rollback()
+            if 'duplicate key value violates unique constraint' in str(e.orig):
+                conflict_detail = str(e.orig).split('DETAIL: ')[-1]
+                logger.error(f"Error de clave duplicada: {conflict_detail}")
+                raise ValueError(f"Error de clave duplicada: {conflict_detail}")
+            else:
+                logger.error(f"Error en la base de datos: {e}")
+                raise ValueError(f"Error en la base de datos: {e}")

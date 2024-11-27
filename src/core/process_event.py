@@ -89,3 +89,34 @@ def extract_consecutivo_plataforma_origen(filename: str) -> str:
     match = re.search(pattern, filename)
 
     return match.group(1) if match else ''
+
+
+def extract_and_validate_event_data(event, required_keys=None):
+    """
+    Extrae y valida los datos de un evento.
+
+    :param event: El evento recibido, con formato esperado de AWS SQS.
+    :param required_keys: Lista de claves requeridas para validar el contenido del body.
+    :return: Lista de diccionarios con los datos extraídos o una lista vacía si hay errores.
+    """
+    records_data = []
+    required_keys = required_keys or []
+
+    for record in event.get("Records", []):
+        body = record.get("body", "{}")
+        try:
+            body_dict = json.loads(body)
+        except json.JSONDecodeError as e:
+            logger.error(f"Error al decodificar el body del evento: {e}")
+            continue
+
+        if all(key in body_dict for key in required_keys):
+            records_data.append(body_dict)
+        else:
+            missing_keys = [key for key in required_keys if key not in body_dict]
+            logger.warning(
+                f"Faltan claves requeridas en el body del evento: {missing_keys}",
+                extra={"body": body_dict},
+            )
+
+    return records_data
