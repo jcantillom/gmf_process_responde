@@ -244,8 +244,49 @@ class TestCorreoParametroRepository(unittest.TestCase):
         self.assertEqual(result, expected_parameters)
 
 
-class TestRtaProcesamientoRepository(unittest.TestCase):
+class TestCGDRtaProArchivosRepository(unittest.TestCase):
     def setUp(self):
+        # Crear un mock de la sesión de la base de datos
+        self.db_mock = MagicMock(spec=Session)
+        self.repository = CGDRtaProArchivosRepository(self.db_mock)
+
+    def test_has_files_loaded_for_response_true(self):
+        # Datos de prueba
+        id_archivo = 123
+        id_rta_procesamiento = 456
+
+        # Crear un mock del objeto CGDRtaProArchivos
+        mock_file = MagicMock(spec=CGDRtaProArchivos)
+        self.db_mock.query().filter().first.return_value = mock_file
+
+        # Llamar a la función
+        result = self.repository.get_files_loaded_for_response(id_archivo, id_rta_procesamiento)
+
+        # Verificar el resultado
+        self.assertTrue(result)
+        self.db_mock.query().filter().all.assert_called_once()
+
+    def test_has_files_loaded_for_response_false(self):
+        # Datos de prueba
+        id_archivo = 123
+        id_rta_procesamiento = 456
+
+        # Configurar el mock para devolver None
+        self.db_mock.query().filter().all.return_value = []
+
+        # Llamar a la función
+        result = self.repository.get_files_loaded_for_response(id_archivo, id_rta_procesamiento)
+
+        # Verificar el resultado
+        self.assertFalse(result)
+        self.db_mock.query().filter().all.assert_called_once()
+
+
+class TestRtaProcesamientoRepository(unittest.TestCase):
+    @patch(
+        'src.core.validator.ArchivoValidator._get_file_config_name',
+        return_value=("dummy_config", "dummy_dir", "dummy_prefix", "dummy_suffix"))
+    def setUp(self, mock_get_file_config_name):
         # Crear un mock de la sesión de la base de datos
         self.db_mock = MagicMock(spec=Session)
         self.repository = RtaProcesamientoRepository(self.db_mock)
@@ -276,40 +317,3 @@ class TestRtaProcesamientoRepository(unittest.TestCase):
         # Verificar que get_last_rta_procesamiento fue llamado con el id correcto
         self.repository.get_last_rta_procesamiento.assert_called_once_with(id_archivo)
 
-
-class TestCGDRtaProArchivosRepository(unittest.TestCase):
-    def setUp(self):
-        # Crear un mock de la sesión de la base de datos
-        self.db_mock = MagicMock(spec=Session)
-        self.repository = CGDRtaProArchivosRepository(self.db_mock)
-
-    def test_has_files_loaded_for_response_true(self):
-        # Datos de prueba
-        id_archivo = 123
-        id_rta_procesamiento = 456
-
-        # Crear un mock del objeto CGDRtaProArchivos
-        mock_file = MagicMock(spec=CGDRtaProArchivos)
-        self.db_mock.query().filter().first.return_value = mock_file
-
-        # Llamar a la función
-        result = self.repository.has_files_loaded_for_response(id_archivo, id_rta_procesamiento)
-
-        # Verificar el resultado
-        self.assertTrue(result)
-        self.db_mock.query().filter().first.assert_called_once()
-
-    def test_has_files_loaded_for_response_false(self):
-        # Datos de prueba
-        id_archivo = 123
-        id_rta_procesamiento = 456
-
-        # Configurar el mock para devolver None
-        self.db_mock.query().filter().first.return_value = None
-
-        # Llamar a la función
-        result = self.repository.has_files_loaded_for_response(id_archivo, id_rta_procesamiento)
-
-        # Verificar el resultado
-        self.assertFalse(result)
-        self.db_mock.query().filter().first.assert_called_once()

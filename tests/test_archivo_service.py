@@ -2,11 +2,10 @@ import json
 import unittest
 from fileinput import filename
 from unittest.mock import patch, MagicMock
-
 from src.config.config import env
 from src.services.archivo_service import ArchivoService
 from src.core.validator import ArchivoValidator
-
+from src.models.cgd_rta_pro_archivos import CGDRtaProArchivos
 
 
 class TestValidateEventData(unittest.TestCase):
@@ -970,4 +969,165 @@ class TestValidarYProcesarArchivo(unittest.TestCase):
         # Llamar a la función
         self.service.validar_y_procesar_archivo(event)
 
+
+class TestValidateIsReprocessing(unittest.TestCase):
+    @patch("src.services.aws_clients_service.AWSClients.get_ssm_client")
+    def setUp(self, mock_ssm_client):
+        # Configurar el cliente SSM simulado
+        mock_ssm_instance = mock_ssm_client.return_value
+        mock_ssm_instance.get_parameter.return_value = {
+            'Parameter': {
+                'Value': '{"CONFIG_NAME": "some_value"}'
+            }
+        }
+
+        self.mock_db = MagicMock()
+        self.service = ArchivoService(self.mock_db)
+        self.service.archivo_validator = MagicMock()
+        self.service.s3_utils = MagicMock()
+        self.service.error_handling_service = MagicMock()
+        self.service.validate_event_data = MagicMock()
+        self.service.validate_file_existence_in_bucket = MagicMock()
+        self.cgd_rta_pro_archivos_service = MagicMock()
+
+    def test_is_reprocessing(self):
+        """
+        Caso en el que el archivo es de reprocesamiento.
+        """
+        # Datos de entrada
+        event = {"Records": [{
+            "body": "{\"is_processing\":true }",
+
+        }]}
+
+        # Llamar a la función
+        result = self.service.validate_is_reprocessing(event)
+
+        # Verificar que la función devuelve True
+        self.assertTrue(result)
+
+    def test_is_not_reprocessing(self):
+        """
+        Caso en el que el archivo no es de reprocesamiento.
+        """
+        # Datos de entrada
+        event = {"Records": [{
+            "body": "{\"is_processing\":false }",
+
+        }]}
+
+        # Llamar a la función
+        result = self.service.validate_is_reprocessing(event)
+
+        # Verificar que la función devuelve False
+        self.assertFalse(result)
+
+    def test_empty_body(self):
+        """
+        Caso en el que el cuerpo del mensaje está vacío.
+        """
+        # Datos de entrada
+        event = {"Records": [{
+            "body": "",
+
+        }]}
+
+        # Llamar a la función
+        result = self.service.validate_is_reprocessing(event)
+
+        # Verificar que la función devuelve False
+        self.assertFalse(result)
+
+    def test_validate_file_id_and_response_processing_id(self):
+        """
+        Caso en el que el archivo es de reprocesamiento.
+        """
+        # Datos de entrada
+        event = {"Records": [{
+            "body": "{\"file_id\": 1, \"response_processing_id\": 2 }",
+
+        }]}
+
+        # Llamar a la función
+        result = self.service.validate_file_id_and_response_processing_id(event)
+
+        # Verificar que la función devuelve True
+        self.assertTrue(result)
+
+    def test_validate_file_id_and_response_processing_id_empty(self):
+        """
+        Caso en el que el cuerpo del mensaje está vacío.
+        """
+        # Datos de entrada
+        event = {"Records": [{
+            "body": "",
+
+        }]}
+
+        # Llamar a la función
+        result = self.service.validate_file_id_and_response_processing_id(event)
+
+        # Verificar que la función devuelve False
+        self.assertFalse(result)
+
+    @patch('src.repositories.cgd_rta_pro_archivos_repository.CGDRtaProArchivosRepository.get_files_loaded_for_response')
+    @patch('src.services.cgd_rta_pro_archivo_service.CGDRtaProArchivosService.send_pending_files_to_queue_by_id')
+    @patch('src.utils.sqs_utils.delete_message_from_sqs')
+    def test_process_existing_files(self, mock_delete_message, mock_send_pending_files, mock_get_files_loaded):
+        """
+        Caso en el que el archivo es de reprocesamiento.
+        """
+
+        # Configurar los mocks
+        mock_get_files_loaded.return_value = [
+            CGDRtaProArchivos(
+                id_archivo=1,
+                nombre_archivo="test_file.txt",
+                id_rta_procesamiento=2,
+                estado="EN_PROCESO"
+            )
+        ]
+        mock_delete_message.return_value = True
+        mock_send_pending_files.return_value = True
+
+        # Datos de entrada
+        event = {"Records": [{
+            "body": "{\"file_id\": 1, \"response_processing_id\": 2 }",
+
+        }]}
+
+        # Llamar a la función
+        result = self.service.process_existing_files(
+            event, "test_bucket", "test_receipt_handle")
+
+        # Verificar que la función devuelve True
+        self.assertTrue(result)
+
+    @patch('src.services.s3_service.S3Utils.validate_decompressed_files_in_processing')
+    @patch('src.utils.logger_utils')
+    def test_validate_unzip_files(self, mock_validate_decompressed_files_in_processing, mock_logger):
+        mock_validate_decompressed_files_in_processing.return_value = True
+        mock_logger.info = MagicMock()
+
+        # llamar a la funcion
+        self.service.validate_unzip_files("test_bucket", "test_receipt_handle")
+
+        # Verificar que la función devuelve True
+        self.assertTrue(mock_validate_decompressed_files_in_processing.return_value)
+
+    @patch('src.services.archivo_service.ArchivoService.get_estado_archivo')
+    def test_handle_reprocessing_with_ids(self, mock_get_estado_archivo):
+        """
+        Caso en el que el archivo es de reprocesamiento.
+        """
+
+        mock_get_estado_archivo.return_value = "EN_PROCESO"
+        # Datos de entrada
+        event = {"Records": [{
+            "body": "{\"file_id\": 1, \"response_processing_id\": 2 }",
+
+        }]}
+
+        # Llamar a la función
+        result = self.service.handle_reprocessing_with_ids(event, "test")
 

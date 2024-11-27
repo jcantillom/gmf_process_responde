@@ -77,3 +77,25 @@ def build_email_message(
         })
 
     return message
+
+
+#enviar mensaje a sqs con delay_seconds
+def send_message_to_sqs_with_delay(queue_url: str, message_body: dict, filename: str, delay_seconds: int):
+    """
+    Envía un mensaje a una cola SQS con delay_seconds.
+
+    :param queue_url: URL de la cola SQS.
+    :param message_body: Cuerpo del mensaje a enviar.
+    :param filename: Nombre del archivo que generó el evento.
+    :param delay_seconds: Tiempo en segundos que se espera antes de enviar el mensaje.
+    """
+    sqs = AWSClients.get_sqs_client()
+    try:
+        sqs.send_message(
+            QueueUrl=queue_url,
+            MessageBody=json.dumps(message_body, ensure_ascii=False),
+            DelaySeconds=delay_seconds
+        )
+        logger.debug("Mensaje enviado a SQS con éxito", extra={"event_filename": filename})
+    except Exception as e:
+        logger.error("Error al enviar mensaje a SQS: %s", e, extra={"event_filename": filename})

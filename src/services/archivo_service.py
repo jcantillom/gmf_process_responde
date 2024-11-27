@@ -12,7 +12,7 @@ from src.core.process_event import (
     build_acg_name_if_general_file,
     extract_and_validate_event_data,
 )
-from src.utils.sqs_utils import delete_message_from_sqs, send_message_to_sqs
+from src.utils.sqs_utils import delete_message_from_sqs, send_message_to_sqs, send_message_to_sqs_with_delay
 from src.core.validator import ArchivoValidator
 from src.utils.logger_utils import get_logger
 from sqlalchemy.orm import Session
@@ -22,6 +22,7 @@ from src.repositories.archivo_estado_repository import ArchivoEstadoRepository
 from src.repositories.rta_procesamiento_repository import RtaProcesamientoRepository
 from src.repositories.cgd_rta_pro_archivos_repository import CGDRtaProArchivosRepository
 from ..models.cgd_archivo import CGDArchivo
+from .cgd_rta_pro_archivo_service import CGDRtaProArchivosService
 import sys
 import time
 import json
@@ -38,6 +39,7 @@ class ArchivoService:
         self.estado_archivo_repository = ArchivoEstadoRepository(db)
         self.rta_procesamiento_repository = RtaProcesamientoRepository(db)
         self.rta_pro_archivos_repository = CGDRtaProArchivosRepository(db)
+        self.cgd_rta_pro_archivos_service = CGDRtaProArchivosService(db)
 
         # obtener parametros de reintentos
         retries_config = self.archivo_validator.get_retry_parameters(env.PARAMETER_STORE_RETRY_CONFIG)
@@ -46,93 +48,24 @@ class ArchivoService:
 
     def validar_y_procesar_archivo(self, event):
         """Valida y procesa el archivo recibido."""
-        attempt_count = 0
+        try:
+            file_name, bucket, receipt_handle, acg_nombre_archivo = self.extract_event_details(event)
 
-        while attempt_count < self.max_retries:
-            try:
-                # Extraer detalles del evento
-                file_name, bucket, receipt_handle, acg_nombre_archivo = (
-                    self.extract_event_details(event)
-                )
-                # Validar datos del evento
-                if not self.validate_event_data(file_name, bucket, receipt_handle):
-                    return
-                # Validar existencia del archivo en el bucket
-                if not self.validate_file_existence_in_bucket(file_name, bucket, receipt_handle):
-                    return
-
-                # Validar si el archivo es un re-procesamiento
-                if self.validate_is_reprocessing(event):
-
-                    # Validar si el evento contiene el file_id y el response_processing_id
-                    if self.validate_file_id_and_response_processing_id(event):
-                        logger.debug(
-                            "*** El archivo es un re-procesamiento y ya se encuentra registrado en la base de datos.***"
-                        )
-                        # procesar archivo re-procesamiento
-                        self.handle_reprocessing_with_ids(event, acg_nombre_archivo)
-
-                        if self.validate_rta_pro_archivos_existence(event):
-                            print("Ya existen archivos cargados para este ID_ARCHIVO y este ID_RTA_PROCESAMIENTO.")
-
-
-
-
-
-                    else:
-                        logger.warning(
-                            "El archivo es un re-procesamiento pero no se encuentra registrado en la base de datos."
-                        )
-                        # Continuar con el procesamiento normal
-
-                # Si el archivo es especial
-                if self.archivo_validator.is_special_prefix(file_name):
-                    self.process_special_file(
-                        file_name, bucket, receipt_handle, acg_nombre_archivo
-                    )
-                else:
-                    # Si el archivo es general
-                    self.process_general_file(
-                        file_name, bucket, receipt_handle, acg_nombre_archivo
-                    )
+            if not self.validate_event_data(file_name, bucket, receipt_handle):
                 return
-            except Exception as e:
-                attempt_count += 1
-                if attempt_count < self.max_retries:
-                    print(e)
-                    logger.error(f"Error al procesar el archivo; reintentando en {self.retry_delay} segundos.")
 
-                    # Reenviar el mensaje con el contador de reintentos incrementado
-                    retry_count = event.get("retry_count", 0) + 1
-                    new_message = {
-                        **event,
-                        "retry_count": retry_count
-                    }
-                    send_message_to_sqs(env.SQS_URL_PRO_RESPONSE_TO_PROCESS, new_message, file_name)
+            if not self.validate_file_existence_in_bucket(file_name, bucket, receipt_handle):
+                return
 
-                    # Eliminar el mensaje original antes de reintentar
-                    if receipt_handle:
-                        delete_message_from_sqs(receipt_handle, env.SQS_URL_PRO_RESPONSE_TO_PROCESS, file_name)
+            if self.validate_is_reprocessing(event):
+                self._handle_reprocessing(event, file_name, bucket, receipt_handle, acg_nombre_archivo)
+            else:
+                self._handle_new_file(file_name, bucket, receipt_handle, acg_nombre_archivo)
 
-                    # Esperar antes del siguiente intento
-                    time.sleep(self.retry_delay)
-                else:
-                    logger.error(
-                        "Error al procesar el archivo; se superó el número máximo de reintentos.",
-                        extra={"event_filename": file_name},
-                    )
-                    self.error_handling_service.handle_error_master(
-                        id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
-                        filekey=f"{env.DIR_RECEPTION_FILES}/{file_name}",
-                        bucket=bucket,
-                        receipt_handle=receipt_handle,
-                        codigo_error=env.CONST_COD_ERROR_TECHNICAL,
-                        filename=file_name,
-                    )
-                    # Eliminar el mensaje original al fallar el máximo de reintentos
-                    if receipt_handle:
-                        delete_message_from_sqs(receipt_handle, env.SQS_URL_PRO_RESPONSE_TO_PROCESS, file_name)
-                    return
+            return
+
+        except Exception:
+            self._handle_exception(event, file_name, bucket, receipt_handle)
 
     # =======================================================================
     #                          FUNCIONES AUXILIARES
@@ -351,23 +284,29 @@ class ArchivoService:
         """
         Descomprime un archivo
         """
-        destination_folder = self.s3_utils.unzip_file_in_s3(
-            bucket,
-            new_file_key,
-            int(archivo_id),
-            acg_nombre_archivo,
-            new_counter,
-            receipt_handle,
-            error_handling_service,
-        )
-        file_name = new_file_key.split("/")[-1]
-
-        if destination_folder:
-            self.process_sqs_response(
-                archivo_id,
-                file_name,
+        try:
+            destination_folder = self.s3_utils.unzip_file_in_s3(
+                bucket,
+                new_file_key,
+                int(archivo_id),
+                acg_nombre_archivo,
+                new_counter,
                 receipt_handle,
-                destination_folder,
+                error_handling_service,
+            )
+            file_name = new_file_key.split("/")[-1]
+
+            if destination_folder:
+                self.process_sqs_response(
+                    archivo_id,
+                    file_name,
+                    receipt_handle,
+                    destination_folder,
+                )
+        except Exception:
+            logger.error(
+                f"Error al descomprimir el archivo {new_file_key} en S3",
+                extra={"event_filename": new_file_key},
             )
 
     def process_sqs_response(self, archivo_id, file_name, receipt_handle, destination_folder=None):
@@ -564,7 +503,6 @@ class ArchivoService:
         records_data = extract_and_validate_event_data(event, required_keys=["file_id", "response_processing_id"])
         for record in records_data:
             file_id = record.get("file_id")
-            response_processing_id = record.get("response_processing_id")
             acg_nombre_archivo = build_acg_name_if_general_file(acg_nombre_archivo)
 
             # obtener el estado del archivo
@@ -600,7 +538,7 @@ class ArchivoService:
                 int(file_id), last_counter
             )
 
-    def process_existing_files(self, event):
+    def process_existing_files(self, event, receipt_handle, file_name):
         """
         Procesa los archivos existentes asociados a los ID_ARCHIVO y ID_RTA_PROCESAMIENTO específicos.
 
@@ -627,6 +565,91 @@ class ArchivoService:
                 for file in loaded_files:
                     self.cgd_rta_pro_archivos_service.send_pending_files_to_queue_by_id(
                         id_archivo=file.id_archivo,
-                        queue_url=env.SQS_URL_PRO_RESPONSE_TO_UPLOAD,
-                        destination_folder=file.destination_folder,  # Ajustar según la estructura de tu base de datos
+                        queue_url=env.SQS_URL_PRO_RESPONSE_TO_CONSOLIDATE,
+                        destination_folder=env.DIR_PROCESSED_FILES,
                     )
+                delete_message_from_sqs(
+                    receipt_handle, env.SQS_URL_PRO_RESPONSE_TO_PROCESS, file_name
+                )
+                return True
+
+    # funcion para validar si se lograron descomprimir los archivos
+    def validate_unzip_files(self, bucket, file_name):
+        """
+        Valida si se lograron descomprimir los archivos.
+        """
+        # Validar si se lograron descomprimir los archivos
+        if not self.s3_utils.validate_decompressed_files_in_processing(
+                bucket,
+                env.DIR_PROCESSING_FILES,
+                file_name):
+            logger.error(
+                "No se lograron descomprimir los archivos; se elimina el mensaje de la cola."
+            )
+            return False
+        return True
+
+    # ==========================================================================
+    #                    FUNCIONES PRIVADAS AUXILIARES
+    # ==========================================================================
+    def _handle_reprocessing(self, event, file_name, bucket, receipt_handle, acg_nombre_archivo):
+        """Maneja el reprocesamiento de archivos."""
+        if self.validate_file_id_and_response_processing_id(event):
+            logger.debug("*** El archivo es un re-procesamiento y ya se encuentra registrado en la base de datos.***")
+            self.handle_reprocessing_with_ids(event, acg_nombre_archivo)
+
+            if self.process_existing_files(event, receipt_handle, file_name):
+                return
+
+            if not self.validate_unzip_files(bucket, file_name):
+                new_file_key = self.move_file_and_update_state(bucket, file_name, acg_nombre_archivo)
+                archivo_id = self.archivo_repository.get_archivo_by_nombre_archivo(acg_nombre_archivo).id_archivo
+
+                self.unzip_file(
+                    bucket,
+                    new_file_key,
+                    archivo_id,
+                    acg_nombre_archivo=acg_nombre_archivo,
+                    new_counter=0,
+                    receipt_handle=receipt_handle,
+                    error_handling_service=self.error_handling_service,
+                )
+        else:
+            logger.warning("El archivo es un re-procesamiento pero no se encuentra registrado en la base de datos.")
+
+    def _handle_new_file(self, file_name, bucket, receipt_handle, acg_nombre_archivo):
+        """Maneja el procesamiento de archivos nuevos."""
+        if self.archivo_validator.is_special_prefix(file_name):
+            self.process_special_file(file_name, bucket, receipt_handle, acg_nombre_archivo)
+        else:
+            self.process_general_file(file_name, bucket, receipt_handle, acg_nombre_archivo)
+
+    def _handle_exception(self, event, file_name, bucket, receipt_handle):
+        """Maneja las excepciones y reintentos."""
+        retry_count = event.get("retry_count", 0) + 1
+
+        if retry_count < self.max_retries:
+            logger.info("Reenviando mensaje a la cola con un retraso de 15 minutos.")
+            new_message = {**event, "retry_count": retry_count}
+            send_message_to_sqs_with_delay(
+                queue_url=env.SQS_URL_PRO_RESPONSE_TO_PROCESS,
+                message_body=new_message,
+                filename=file_name,
+                delay_seconds=900,
+            )
+        else:
+            logger.error(
+                "Error al procesar el archivo; se superó el número máximo de reintentos.",
+                extra={"event_filename": file_name},
+            )
+            self.error_handling_service.handle_error_master(
+                id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
+                filekey=f"{env.DIR_RECEPTION_FILES}/{file_name}",
+                bucket=bucket,
+                receipt_handle=receipt_handle,
+                codigo_error=env.CONST_COD_ERROR_TECHNICAL,
+                filename=file_name,
+            )
+
+        if receipt_handle:
+            delete_message_from_sqs(receipt_handle, env.SQS_URL_PRO_RESPONSE_TO_PROCESS, file_name)

@@ -16,6 +16,7 @@ from src.utils.sqs_utils import (
     delete_message_from_sqs,
     send_message_to_sqs,
     build_email_message,
+    send_message_to_sqs_with_delay,
 )
 from src.utils.singleton import SingletonMeta
 from src.services.error_handling_service import ErrorHandlingService
@@ -330,6 +331,28 @@ class TestSQSUtils(unittest.TestCase):
 
         actual_message = build_email_message(id_plantilla, error_data, mail_parameters, filename)
         self.assertEqual(actual_message, message)
+
+    @patch('src.services.aws_clients_service.AWSClients.get_sqs_client')
+    def test_send_message_to_sqs_with_delay(self, mock_get_sqs_client):
+        # Configura el mock
+        mock_sqs = MagicMock()
+        mock_get_sqs_client.return_value = mock_sqs
+
+        queue_url = 'http://example.com/sqs'
+        message_body = {'key': 'value'}
+        filename = 'test_file.txt'
+        delay_seconds = 10
+
+        # Llama a la función
+        send_message_to_sqs_with_delay(queue_url, message_body, filename, delay_seconds)
+
+        # Afirmaciones
+        mock_sqs.send_message.assert_called_once_with(
+            QueueUrl=queue_url,
+            MessageBody=json.dumps(message_body, ensure_ascii=False),
+            DelaySeconds=delay_seconds
+        )
+
 
 
 class TestS3Utils(unittest.TestCase):
