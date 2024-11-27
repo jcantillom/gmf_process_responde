@@ -57,7 +57,7 @@ class EnvironmentSettings(BaseSettings):
     CONST_PLATAFORMA_ORIGEN: str = ""
     CONST_TIPO_ARCHIVO_GENERAL: str = ""
     CONST_TIPO_ARCHIVO_GENERAL_REINTEGROS: str = ""
-    PARAMETER_STORE_RETRY_CONFIG: str = ""
+    PARAMETER_STORE_TRANSVERSAL: str = ""
     CONST_COD_ERROR_TECHNICAL: str = ""
 
     class Config:

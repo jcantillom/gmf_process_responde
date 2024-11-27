@@ -42,7 +42,7 @@ class ArchivoService:
         self.cgd_rta_pro_archivos_service = CGDRtaProArchivosService(db)
 
         # obtener parametros de reintentos
-        retries_config = self.archivo_validator.get_retry_parameters(env.PARAMETER_STORE_RETRY_CONFIG)
+        retries_config = self.archivo_validator.get_retry_parameters(env.PARAMETER_STORE_TRANSVERSAL)
         self.max_retries = int(retries_config.get("number-retries", 5))
         self.retry_delay = int(retries_config.get("time-between-retry", 900))
 

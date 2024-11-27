@@ -354,7 +354,6 @@ class TestSQSUtils(unittest.TestCase):
         )
 
 
-
 class TestS3Utils(unittest.TestCase):
     @patch('boto3.client')
     @patch('src.services.aws_clients_service.AWSClients.get_ssm_client')
@@ -457,6 +456,27 @@ class TestS3Utils(unittest.TestCase):
         self.assertTrue(destination.startswith(env.DIR_PROCESSING_FILES))
         self.s3_utils.s3.copy_object.assert_called_once()
         self.s3_utils.s3.delete_object.assert_called_once()
+
+    @patch('src.services.aws_clients_service.AWSClients.get_s3_client')
+    def test_validate_decompressed_files_in_processing(self, mock_s3_client):
+        # Simular el cliente S3
+        mock_s3 = MagicMock()
+        mock_s3_client.return_value = mock_s3
+
+        # Configurar el retorno para list_objects_v2
+        mock_s3.list_objects_v2.return_value = {
+            'Contents': [
+                {'Key': 'processing_folder/test_file_/file1.txt'}
+            ]
+        }
+
+        # Llamar a la función que se está probando
+        result = self.s3_utils.validate_decompressed_files_in_processing(
+            'test-bucket', 'processing_folder', 'test_file.zip'
+        )
+
+        # Verificar el resultado esperado
+        self.assertFalse(result)
 
 
 class TestS3UtilsZip(unittest.TestCase):
