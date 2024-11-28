@@ -3,6 +3,8 @@ import re
 import json
 from datetime import datetime
 from botocore.exceptions import ClientError
+
+from src.core.custom_error import CustomFunctionError
 from src.services.aws_clients_service import AWSClients
 from src.utils.logger_utils import get_logger
 from src.config.config import env
@@ -93,30 +95,37 @@ class ArchivoValidator:
         Verifica si el archivo cumple con la estructura definida para archivos especiales
         y que la fecha en el nombre no sea mayor a la fecha actual.
         """
-        # Remueve el sufijo .zip si está presente
-        if filename.endswith(".zip"):
-            filename = filename[:-4]
+        try:
+            # Remueve el sufijo .zip si está presente
+            if filename.endswith(".zip"):
+                filename = filename[:-4]
 
-        # Definir el patrón de archivo especial
-        expected_pattern = f"^{self.special_start}(\\d{{8}})-{self.special_end}$"
+            # Definir el patrón de archivo especial
+            expected_pattern = f"^{self.special_start}(\\d{{8}})-{self.special_end}$"
 
-        match = re.match(expected_pattern, filename)
-        if not match:
-            logger.debug(f"El archivo {filename} no cumple con la estructura de un archivo especial.")
-            return False
+            match = re.match(expected_pattern, filename)
+            if not match:
+                logger.debug(f"El archivo {filename} no cumple con la estructura de un archivo especial.")
+                return False
 
-        # Extraer la fecha del nombre de archivo y validar que no sea mayor a la fecha actual
-        fecha_str = match.group(1)
-        if not self.is_valid_date_in_filename(fecha_str):
-            logger.debug(f"La fecha {fecha_str} en el archivo {filename} es mayor a la fecha actual.")
-            return False
+            # Extraer la fecha del nombre de archivo y validar que no sea mayor a la fecha actual
+            fecha_str = match.group(1)
+            if not self.is_valid_date_in_filename(fecha_str):
+                logger.debug(f"La fecha {fecha_str} en el archivo {filename} es mayor a la fecha actual.")
+                return False
 
-        logger.debug("El archivo cumple con la estructura de archivo especial.",
-                     extra={"event_filename": {
-                         "filename": filename,
-                         "fecha_str": fecha_str,
-                     }})
-        return True
+            logger.debug("El archivo cumple con la estructura de archivo especial.",
+                         extra={"event_filename": {
+                             "filename": filename,
+                             "fecha_str": fecha_str,
+                         }})
+            return True
+        except Exception as e:
+            raise CustomFunctionError(
+                code=env.CONST_COD_ERROR_NAME_FILE,
+                error_details=f"Error al validar el nombre del archivo especial {filename}: {e}",
+                is_technical_error=False
+            )
 
     def validate_filename_structure_for_general_file(self, filename: str) -> bool:
         """
@@ -124,31 +133,38 @@ class ArchivoValidator:
         Ahora también acepta nombres de archivo que terminan en '-R'.
         """
         # Remueve el sufijo .zip si está presente
-        if filename.endswith(".zip"):
-            filename = filename[:-4]
+        try:
+            if filename.endswith(".zip"):
+                filename = filename[:-4]
 
-        # Definir el patrón de archivo general, permitiendo '-R' opcionalmente
-        expected_pattern = f"^{self.general_start}(\\d{{8}})-\\d{{4}}(-R)?$"
+            # Definir el patrón de archivo general, permitiendo '-R' opcionalmente
+            expected_pattern = f"^{self.general_start}(\\d{{8}})-\\d{{4}}(-R)?$"
 
-        match = re.match(expected_pattern, filename)
-        if not match:
-            logger.debug(f"El archivo {filename} no cumple con el patrón de estructura general: {expected_pattern}")
-            return False
+            match = re.match(expected_pattern, filename)
+            if not match:
+                logger.debug(f"El archivo {filename} no cumple con el patrón de estructura general: {expected_pattern}")
+                return False
 
-        # Extraer la fecha del nombre de archivo y validar que no sea mayor a la fecha actual
-        fecha_str = match.group(1)
-        if not self.is_valid_date_in_filename(fecha_str):
-            logger.debug(f"La fecha {fecha_str} en el archivo {filename} es mayor a la fecha actual.")
-            return False
+            # Extraer la fecha del nombre de archivo y validar que no sea mayor a la fecha actual
+            fecha_str = match.group(1)
+            if not self.is_valid_date_in_filename(fecha_str):
+                logger.debug(f"La fecha {fecha_str} en el archivo {filename} es mayor a la fecha actual.")
+                return False
 
-        logger.debug(
-            "El archivo cumple con la estructura de archivo general y la fecha en el nombre es válida.",
-            extra={"event_filename": {
-                "filename": filename,
-                "fecha_str": fecha_str,
-            }}
-        )
-        return True
+            logger.debug(
+                "El archivo cumple con la estructura de archivo general y la fecha en el nombre es válida.",
+                extra={"event_filename": {
+                    "filename": filename,
+                    "fecha_str": fecha_str,
+                }}
+            )
+            return True
+        except Exception as e:
+            raise CustomFunctionError(
+                code=env.CONST_COD_ERROR_NAME_FILE,
+                error_details=f"Error al validar el nombre del archivo general {filename}: {e}",
+                is_technical_error=False
+            )
 
     @staticmethod
     def build_acg_nombre_archivo(filename: str) -> str:
@@ -188,8 +204,15 @@ class ArchivoValidator:
         """
         Verifica si el estado del archivo es válido.
         """
-        valid_states = self._get_valid_states()
-        return state in valid_states
+        try:
+            valid_states = self._get_valid_states()
+            return state in valid_states
+        except Exception as e:
+            raise CustomFunctionError(
+                code=env.CONST_COD_ERROR_STATE_FILE,
+                error_details=f"Error al validar el estado del archivo: {e}",
+                is_technical_error=False
+            )
 
     @staticmethod
     def is_not_processed_state(state: str) -> bool:
@@ -220,32 +243,39 @@ class ArchivoValidator:
         - Contiene el 'acg_nombre_archivo' original
         - Termina con un sufijo válido según el tipo de respuesta.
         """
-        # Verificar prefijo 'RE_'
-        if not extracted_filename.startswith("RE_"):
-            logger.error(f"El archivo {extracted_filename} no comienza con 'RE_'.")
-            return False
+        try:
+            # Verificar prefijo 'RE_'
+            if not extracted_filename.startswith("RE_"):
+                logger.error(f"El archivo {extracted_filename} no comienza con 'RE_'.")
+                return False
 
-        # Verificar si contiene el 'acg_nombre_archivo'
-        if acg_nombre_archivo not in extracted_filename:
-            logger.error(f"El archivo {extracted_filename} no contiene el nombre base {acg_nombre_archivo}.")
-            return False
+            # Verificar si contiene el 'acg_nombre_archivo'
+            if acg_nombre_archivo not in extracted_filename:
+                logger.error(f"El archivo {extracted_filename} no contiene el nombre base {acg_nombre_archivo}.")
+                return False
 
-        # Obtener el sufijo del archivo y validar contra el tipo de respuesta
-        valid_suffixes = self.valid_file_suffixes.get(tipo_respuesta, [])
-        logger.debug(f"Sufijos válidos para tipo {tipo_respuesta}: {valid_suffixes}")
+            # Obtener el sufijo del archivo y validar contra el tipo de respuesta
+            valid_suffixes = self.valid_file_suffixes.get(tipo_respuesta, [])
+            logger.debug(f"Sufijos válidos para tipo {tipo_respuesta}: {valid_suffixes}")
 
-        suffix_match = any(extracted_filename.endswith(f"-{suffix}.txt") for suffix in valid_suffixes)
+            suffix_match = any(extracted_filename.endswith(f"-{suffix}.txt") for suffix in valid_suffixes)
 
-        if not suffix_match:
-            logger.error(
-                f"El archivo {extracted_filename} no finaliza con un sufijo válido para tipo {tipo_respuesta}."
+            if not suffix_match:
+                logger.error(
+                    f"El archivo {extracted_filename} no finaliza con un sufijo válido para tipo {tipo_respuesta}."
+                )
+                return False
+
+            logger.debug(
+                f"El archivo {extracted_filename} cumple con todas las validaciones de estructura para tipo {tipo_respuesta}."
             )
-            return False
-
-        logger.debug(
-            f"El archivo {extracted_filename} cumple con todas las validaciones de estructura para tipo {tipo_respuesta}."
-        )
-        return True
+            return True
+        except Exception as e:
+            raise CustomFunctionError(
+                code=env.CONST_COD_ERROR_INVALID_FILE_SUFFIX,
+                error_details=f"Error al validar el nombre del archivo extraído {extracted_filename}: {e}",
+                is_technical_error=False
+            )
 
     def validar_archivos_in_zip(self, extracted_filename: str, tipo_respuesta: str,
                                 acg_nombre_archivo: str) -> bool:

@@ -38,3 +38,6 @@ class ArchivoEstadoRepository:
             else:
                 logger.error(f"Error en la base de datos: {e}")
                 raise ValueError(f"Error en la base de datos: {e}")
+
+
+

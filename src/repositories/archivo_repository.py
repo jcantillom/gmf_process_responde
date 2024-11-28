@@ -1,5 +1,8 @@
 from typing import Type, Optional, Any
 from sqlalchemy.orm import Session
+
+from src.core.custom_error import CustomFunctionError
+from src.config.config import env
 from src.models.cgd_archivo import CGDArchivo, CGDArchivoEstado
 
 
@@ -28,7 +31,6 @@ class ArchivoRepository:
         except Exception as e:
             print(f"Error al buscar archivo por nombre: {e}")
 
-
     def check_file_exists(self, nombre_archivo: str) -> bool:
         """
         Verifica si un archivo existe en la base de datos.
@@ -36,8 +38,15 @@ class ArchivoRepository:
         :param nombre_archivo: Nombre del archivo a buscar.
         :return: True si existe, False si no.
         """
-        archivo = self.get_archivo_by_nombre_archivo(nombre_archivo)
-        return archivo is not None
+        try:
+            archivo = self.get_archivo_by_nombre_archivo(nombre_archivo)
+            return archivo is not None
+        except Exception as e:
+            raise CustomFunctionError(
+                code=env.CONST_COD_ERROR_NOT_EXISTS_FILE,
+                error_details=f"El archivo {nombre_archivo} no existe en la base de datos.",
+                is_technical_error=False,
+            )
 
     def update_estado_archivo(
             self,
@@ -80,4 +89,22 @@ class ArchivoRepository:
         :param archivo: Instancia de CGDArchivo a insertar.
         """
         self.db.add(archivo)
+        self.db.commit()
+
+    def insert_code_error(
+            self,
+            id_archivo: int,
+            code_error: str,
+            detail_error: str,
+    ) -> None:
+        """
+        Inserta un error en la tabla CGD_ARCHIVO.
+
+        :param id_archivo: ID del archivo.
+        :param code_error: Código de error.
+        :param detail_error: Detalle del error.
+        """
+        archivo = self.db.query(CGDArchivo).filter(CGDArchivo.id_archivo == id_archivo).first()
+        archivo.codigo_error = code_error
+        archivo.detalle_error = detail_error
         self.db.commit()

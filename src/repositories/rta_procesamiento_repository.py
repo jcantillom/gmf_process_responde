@@ -187,7 +187,6 @@ class RtaProcesamientoRepository:
 
         return last_rta_procesamiento
 
-    # actualizar el contador de intentos de cargue
     def update_contador_intentos_cargue(self, id_archivo: int, contador_intentos_cargue: int):
         """
         Actualiza el contador de intentos de cargue de una respuesta de procesamiento.
@@ -196,6 +195,30 @@ class RtaProcesamientoRepository:
         last_entry = self.get_last_rta_procesamiento(id_archivo)
 
         last_entry.contador_intentos_cargue = contador_intentos_cargue
+
+        # Confirmamos los cambios en la base de datos
+        self.db.commit()
+        self.db.refresh(last_entry)
+
+    # insertamos el error en la tabla CGD_RTA_PROCESAMIENTO.
+    def insert_code_error(self, id_archivo: int, rta_procesamiento_id: int, code_error: str, detail_error: str):
+        """
+        Inserta un error en la tabla CGD_RTA_PROCESAMIENTO.
+
+        :param id_archivo: ID del archivo.
+        :param rta_procesamiento_id: ID de la respuesta de procesamiento.
+        :param code_error: Código de error.
+        :param detail_error: Detalle del error.
+        """
+        # Obtiene la última respuesta de procesamiento
+        last_entry = self.db.query(CGDRtaProcesamiento) \
+            .filter(CGDRtaProcesamiento.id_archivo == id_archivo,
+                    CGDRtaProcesamiento.id_rta_procesamiento == rta_procesamiento_id) \
+            .order_by(CGDRtaProcesamiento.id_rta_procesamiento.desc()) \
+            .first()
+
+        last_entry.codigo_error = code_error
+        last_entry.detalle_error = detail_error
 
         # Confirmamos los cambios en la base de datos
         self.db.commit()

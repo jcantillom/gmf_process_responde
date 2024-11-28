@@ -59,6 +59,7 @@ class EnvironmentSettings(BaseSettings):
     CONST_TIPO_ARCHIVO_GENERAL_REINTEGROS: str = ""
     PARAMETER_STORE_TRANSVERSAL: str = ""
     CONST_COD_ERROR_TECHNICAL: str = ""
+    CONST_COD_ERROR_NAME_FILE: str = ""
 
     class Config:
         env_file = ".env"

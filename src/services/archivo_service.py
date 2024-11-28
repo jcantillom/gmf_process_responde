@@ -1,7 +1,5 @@
-from datetime import datetime
-
-from hamcrest import is_in
-
+from datetime import datetime, timedelta
+from src.core.custom_error import CustomFunctionError
 from src.repositories.archivo_repository import ArchivoRepository
 from src.services.s3_service import S3Utils
 from src.core.process_event import (
@@ -26,6 +24,7 @@ from .cgd_rta_pro_archivo_service import CGDRtaProArchivosService
 import sys
 import time
 import json
+from .technical_error_service import TechnicalErrorService
 
 logger = get_logger(env.DEBUG_MODE)
 
@@ -40,6 +39,7 @@ class ArchivoService:
         self.rta_procesamiento_repository = RtaProcesamientoRepository(db)
         self.rta_pro_archivos_repository = CGDRtaProArchivosRepository(db)
         self.cgd_rta_pro_archivos_service = CGDRtaProArchivosService(db)
+        self.tecnical_error_service = TechnicalErrorService(db)
 
         # obtener parametros de reintentos
         retries_config = self.archivo_validator.get_retry_parameters(env.PARAMETER_STORE_TRANSVERSAL)
@@ -48,9 +48,9 @@ class ArchivoService:
 
     def validar_y_procesar_archivo(self, event):
         """Valida y procesa el archivo recibido."""
-        try:
-            file_name, bucket, receipt_handle, acg_nombre_archivo = self.extract_event_details(event)
+        file_name, bucket, receipt_handle, acg_nombre_archivo = self.extract_event_details(event)
 
+        try:
             if not self.validate_event_data(file_name, bucket, receipt_handle):
                 return
 
@@ -64,7 +64,31 @@ class ArchivoService:
 
             return
 
-        except Exception:
+        except CustomFunctionError as e:
+            logger.error(
+                f"Error Tecnico al procesar el archivo: {e.code} - {e.error_details}",
+                extra={"event_filename": file_name},
+            )
+            if e.is_technical_error:
+                self._handle_exception(event, file_name, bucket, receipt_handle)
+                # TODO: flujo de error tecnico.
+                self.tecnical_error_service.handle_technical_error(
+                    event,
+                    e.code,
+                    e.error_details,
+                    acg_nombre_archivo,
+                    file_id_and_response_processing_id_in_event=(
+                        self.validate_file_id_and_response_processing_id(event)),
+
+                )
+
+            self._handle_exception(event, file_name, bucket, receipt_handle)
+
+        except Exception as e:
+            logger.error(
+                f"Error al procesar el archivo: {e}",
+                extra={"event_filename": file_name},
+            )
             self._handle_exception(event, file_name, bucket, receipt_handle)
 
     # =======================================================================
@@ -194,7 +218,7 @@ class ArchivoService:
             )
             sys.exit(1)
 
-    # pendiente eliminar y elimuinar los test correspondientes.
+    # obtiene el estado de un arhivo especial
     def get_estado_archivo(self, acg_nombre_archivo):
         """Obtiene el estado del archivo."""
         estado = self.archivo_repository.get_archivo_by_nombre_archivo(
@@ -284,29 +308,24 @@ class ArchivoService:
         """
         Descomprime un archivo
         """
-        try:
-            destination_folder = self.s3_utils.unzip_file_in_s3(
-                bucket,
-                new_file_key,
-                int(archivo_id),
-                acg_nombre_archivo,
-                new_counter,
-                receipt_handle,
-                error_handling_service,
-            )
-            file_name = new_file_key.split("/")[-1]
 
-            if destination_folder:
-                self.process_sqs_response(
-                    archivo_id,
-                    file_name,
-                    receipt_handle,
-                    destination_folder,
-                )
-        except Exception:
-            logger.error(
-                f"Error al descomprimir el archivo {new_file_key} en S3",
-                extra={"event_filename": new_file_key},
+        destination_folder = self.s3_utils.unzip_file_in_s3(
+            bucket,
+            new_file_key,
+            int(archivo_id),
+            acg_nombre_archivo,
+            new_counter,
+            receipt_handle,
+            error_handling_service,
+        )
+        file_name = new_file_key.split("/")[-1]
+
+        if destination_folder:
+            self.process_sqs_response(
+                archivo_id,
+                file_name,
+                receipt_handle,
+                destination_folder,
             )
 
     def process_sqs_response(self, archivo_id, file_name, receipt_handle, destination_folder=None):

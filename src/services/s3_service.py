@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from src.repositories.archivo_repository import ArchivoRepository
 from src.core.validator import ArchivoValidator
 from src.services.cgd_rta_pro_archivo_service import CGDRtaProArchivosService
+from src.core.custom_error import CustomFunctionError
 
 
 class S3Utils:
@@ -157,7 +158,6 @@ class S3Utils:
 
                 # si la cantidad de archivos descomprimidos no es igual a la cantidad esperada
                 if not contador_archivos_descomprimidos:
-                    # handling error
                     error_handling_service.handle_generic_error(
                         id_archivo=id_archivo,
                         filekey=file_key,
@@ -167,6 +167,11 @@ class S3Utils:
                         contador_intentos_cargue=contador_intentos_cargue,
                         codigo_error=env.CONST_COD_ERROR_UNEXPECTED_FILE_COUNT,
                         id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
+                    )
+                    raise CustomFunctionError(
+                        code=env.CONST_COD_ERROR_UNEXPECTED_FILE_COUNT,
+                        error_details="La cantidad de archivos descomprimidos no es igual a la cantidad esperada",
+                        is_technical_error=False,
                     )
 
                 # validar la estructura del nombre de cada archivo descomprimido
@@ -247,6 +252,11 @@ class S3Utils:
                 id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
 
             )
+            raise CustomFunctionError(
+                code=env.CONST_COD_ERROR_TECHNICAL_UNZIP,
+                message="Error técnico al descomprimir el archivo",
+                is_technical_error=True,
+            )
 
         except BadZipFile:
             error_handling_service.handle_generic_error(
@@ -260,6 +270,11 @@ class S3Utils:
                 id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
             )
             self.logger.error("Error al descomprimir el archivo .zip", extra={"event_filename": nombre_archivo})
+            raise CustomFunctionError(
+                code=env.CONST_COD_ERROR_CORRUPTED_FILE,
+                message=".zip es inválido o está corrupto",
+                is_technical_error=False,
+            )
             return None
 
     def get_cantidad_de_archivos_esperados_en_el_zip(self, id_archivo, nombre_archivo):
