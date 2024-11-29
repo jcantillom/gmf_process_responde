@@ -774,7 +774,7 @@ class TestHandleInvalidSpecialFile(unittest.TestCase):
             filekey=file_key,
             bucket=bucket,
             receipt_handle=receipt_handle,
-            codigo_error=env.CONST_COD_ERROR_STRUCTURE_NAME_FILE,
+            codigo_error=env.CONST_COD_ERROR_NAME_FILE,
             filename=file_name,
         )
 
