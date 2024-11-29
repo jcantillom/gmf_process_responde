@@ -219,8 +219,12 @@ class ArchivoService:
     # obtiene el estado de un arhivo especial
     def get_estado_archivo(self, acg_nombre_archivo):
         """Obtiene el estado del archivo."""
+        if acg_nombre_archivo.startswith(env.CONST_PRE_GENERAL_FILE):
+            acg_nombre_archivo = build_acg_name_if_general_file(acg_nombre_archivo)
+
         estado = self.archivo_repository.get_archivo_by_nombre_archivo(
             acg_nombre_archivo
+
         ).estado
         logger.debug(
             f"Cargando estado del archivo {acg_nombre_archivo} en la base de datos."
@@ -618,7 +622,7 @@ class ArchivoService:
     # ==========================================================================
     def _handle_reprocessing(self, event, file_name, bucket, receipt_handle, acg_nombre_archivo):
         """Maneja el reprocesamiento de archivos."""
-        if self.validate_file_id_and_response_processing_id(event):
+        if self.validate_file_id_and_response_processing_id(acg_nombre_archivo, file_name):
             logger.debug("*** El archivo es un re-procesamiento y ya se encuentra registrado en la base de datos.***")
             self.handle_reprocessing_with_ids(event, acg_nombre_archivo)
 

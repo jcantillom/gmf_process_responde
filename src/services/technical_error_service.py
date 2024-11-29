@@ -39,18 +39,18 @@ class TechnicalErrorService:
             receipt_handle,
             file_name,
     ):
+        if acg_nombre_archivo.startswith(env.CONST_PRE_GENERAL_FILE):
+            # si el archivo es general, se debe construir el acg_nombre_archivo.
+            acg_nombre_archivo = build_acg_name_if_general_file(acg_nombre_archivo)
+
         id_archivo = self.archivo_repository.get_archivo_by_nombre_archivo(acg_nombre_archivo).id_archivo
         if file_id_and_response_processing_id_in_event:
-            if acg_nombre_archivo.startswith(env.CONST_PRE_GENERAL_FILE):
-                # si el archivo es general, se debe construir el acg_nombre_archivo.
-                acg_nombre_archivo = build_acg_name_if_general_file(acg_nombre_archivo)
+
             # ============================================================
             #       Insertar error en la tabla CGD_RTA_PROCESAMIENTO
             # ============================================================
-            id_rta_procesamiento = \
-                extract_and_validate_event_data(event, required_keys=["response_processing_id"])[0][
-                    "response_processing_id"
-                ]
+            id_rta_procesamiento = (
+                self.rta_procesamiento_repository.get_last_rta_procesamiento(id_archivo).id_rta_procesamiento)
 
             self.rta_procesamiento_repository.insert_code_error(
                 id_archivo=id_archivo,
@@ -71,15 +71,13 @@ class TechnicalErrorService:
         # ============================================================
         #                   Validar reintento
         # ============================================================
-        dody_dict = {}
-        for record in event.get("Records", []):
-            body = record.get("body", "{}")
-            try:
-                body_dict = json.loads(body)
-            except json.JSONDecodeError as e:
-                logger.error(f"Error al decodificar el body del evento: {e}")
-                continue
-        retry_count = dody_dict.get("retry_count", 0) + 1
+        for record in event["Records"]:
+            # Obtener y modificar el body
+            body_dict = json.loads(record["body"])
+            retry_count = body_dict.get("retry_count", 0) + 1
+            body_dict["retry_count"] = retry_count
+            body_dict["is_reprocessing"] = True
+            record["body"] = json.dumps(body_dict)
 
         if retry_count < max_retries:
             logger.info("Reenviando mensaje a la cola con un retraso de 15 minutos.")
@@ -101,21 +99,12 @@ class TechnicalErrorService:
                 estado=env.CONST_ESTADO_PROCESA_PENDIENTE_REINTENTO,
                 contador_intentos_cargue=retry_count,
             )
-            new_body = {
-                **body_dict,
-                "retry_count": retry_count,
-                "is_reprocessing": True,
-            }
-            new_message = {
-                **event,
-                "body": json.dumps(new_body),
-            }
 
             send_message_to_sqs_with_delay(
                 queue_url=env.SQS_URL_PRO_RESPONSE_TO_PROCESS,
-                message_body=new_message,
+                message_body=event,
                 filename=file_name,
-                delay_seconds=900,
+                delay_seconds=retry_delay,
             )
             if receipt_handle:
                 delete_message_from_sqs(receipt_handle, env.SQS_URL_PRO_RESPONSE_TO_PROCESS, file_name)

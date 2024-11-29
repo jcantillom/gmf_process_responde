@@ -114,7 +114,7 @@ def extract_and_validate_event_data(event, required_keys=None):
             records_data.append(body_dict)
         else:
             missing_keys = [key for key in required_keys if key not in body_dict]
-            logger.warning(
+            logger.debug(
                 f"Faltan claves requeridas en el body del evento: {missing_keys}",
                 extra={"body": body_dict},
             )
