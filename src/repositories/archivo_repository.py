@@ -41,10 +41,10 @@ class ArchivoRepository:
         try:
             archivo = self.get_archivo_by_nombre_archivo(nombre_archivo)
             return archivo is not None
-        except Exception as e:
+        except Exception:
             raise CustomFunctionError(
                 code=env.CONST_COD_ERROR_NOT_EXISTS_FILE,
-                error_details=f"El archivo {nombre_archivo} no existe en la base de datos.",
+                error_details=f"Error al verificar si existe el archivo {nombre_archivo}",
                 is_technical_error=False,
             )
 
@@ -108,5 +108,3 @@ class ArchivoRepository:
         archivo.codigo_error = code_error
         archivo.detalle_error = detail_error
         self.db.commit()
-
-

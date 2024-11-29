@@ -1,5 +1,7 @@
 import os
 import sys
+
+from pydantic.v1 import ConfigDict
 from pydantic_settings import BaseSettings
 from pydantic import ValidationError
 from src.utils.logger_utils import get_logger
@@ -64,8 +66,7 @@ class EnvironmentSettings(BaseSettings):
     CONST_ID_PLANTILLA_ERROR_TECHNICAL: str = ""
     CONST_ESTADO_PROCESA_PENDIENTE_REINTENTO: str = ""
 
-    class Config:
-        env_file = ".env"
+    model_config = ConfigDict(env_file=".env")
 
 
 try:
