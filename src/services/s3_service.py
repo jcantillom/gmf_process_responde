@@ -84,10 +84,10 @@ class S3Utils:
 
         # Obtener el año y mes actual para crear la ruta
         current_date = datetime.now()
-        year_month_folder = current_date.strftime("%Y%m")
+        # year_month_folder = current_date.strftime("%Y%m")
 
         # Crear la nueva clave de destino con la carpeta de año y mes
-        destination_key = f"{env.DIR_PROCESSING_FILES}/{year_month_folder}/{file_name}"
+        destination_key = f"{env.DIR_PROCESSING_FILES}/{file_name}"
 
         try:
             # Copiar el archivo a la nueva ubicación
