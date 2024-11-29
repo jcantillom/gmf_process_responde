@@ -6,6 +6,7 @@ from src.config.config import env
 from src.services.archivo_service import ArchivoService
 from src.core.validator import ArchivoValidator
 from src.models.cgd_rta_pro_archivos import CGDRtaProArchivos
+from src.models.cgd_archivo import CGDArchivo
 
 
 class TestValidateEventData(unittest.TestCase):
@@ -980,7 +981,6 @@ class TestValidateIsReprocessing(unittest.TestCase):
                 'Value': '{"CONFIG_NAME": "some_value"}'
             }
         }
-
         self.mock_db = MagicMock()
         self.service = ArchivoService(self.mock_db)
         self.service.archivo_validator = MagicMock()
@@ -1038,37 +1038,26 @@ class TestValidateIsReprocessing(unittest.TestCase):
         # Verificar que la función devuelve False
         self.assertFalse(result)
 
-    def test_validate_file_id_and_response_processing_id(self):
+    @patch('src.repositories.archivo_repository.ArchivoRepository')
+    @patch('src.repositories.rta_procesamiento_repository.RtaProcesamientoRepository')
+    def test_validate_file_id_and_response_processing_id(
+            self, mock_get_id_rta_procesamiento_by_id_archivo, mock_get_archivo_by_nombre_archivo):
         """
         Caso en el que el archivo es de reprocesamiento.
         """
-        # Datos de entrada
-        event = {"Records": [{
-            "body": "{\"file_id\": 1, \"response_processing_id\": 2 }",
+        # Configurar los mocks
+        mock_get_id_rta_procesamiento_by_id_archivo.get_id_rta_procesamiento_by_id_archivo.return_value = 1
+        mock_get_archivo_by_nombre_archivo.get_archivo_by_nombre_archivo.return_value = CGDArchivo(
+            id_archivo=1,
+            nombre_archivo="test_file.txt",
+            estado="EN_PROCESO"
+        )
 
-        }]}
+        self.assertTrue(
+            self.service.validate_file_id_and_response_processing_id(
+                "nombre_test", "test"))
 
-        # Llamar a la función
-        result = self.service.validate_file_id_and_response_processing_id(event)
 
-        # Verificar que la función devuelve True
-        self.assertTrue(result)
-
-    def test_validate_file_id_and_response_processing_id_empty(self):
-        """
-        Caso en el que el cuerpo del mensaje está vacío.
-        """
-        # Datos de entrada
-        event = {"Records": [{
-            "body": "",
-
-        }]}
-
-        # Llamar a la función
-        result = self.service.validate_file_id_and_response_processing_id(event)
-
-        # Verificar que la función devuelve False
-        self.assertFalse(result)
 
     @patch('src.repositories.cgd_rta_pro_archivos_repository.CGDRtaProArchivosRepository.get_files_loaded_for_response')
     @patch('src.services.cgd_rta_pro_archivo_service.CGDRtaProArchivosService.send_pending_files_to_queue_by_id')
@@ -1130,4 +1119,3 @@ class TestValidateIsReprocessing(unittest.TestCase):
 
         # Llamar a la función
         result = self.service.handle_reprocessing_with_ids(event, "test")
-

@@ -76,11 +76,12 @@ class ArchivoService:
                     e.error_details,
                     acg_nombre_archivo,
                     file_id_and_response_processing_id_in_event=(
-                        self.validate_file_id_and_response_processing_id(acg_nombre_archivo)),
+                        self.validate_file_id_and_response_processing_id(acg_nombre_archivo, file_name)),
                     max_retries=self.max_retries,
                     retry_delay=self.retry_delay,
                     estado_inicial=self.get_estado_archivo(acg_nombre_archivo),
                     receipt_handle=receipt_handle,
+                    file_name=file_name,
                 )
         except Exception as e:
             logger.error(
@@ -495,7 +496,7 @@ class ArchivoService:
                 return True
         return False
 
-    def validate_file_id_and_response_processing_id(self, acg_nombre_archivo):
+    def validate_file_id_and_response_processing_id(self, acg_nombre_archivo, file_name):
         """
         Valida si en la Db existe el archivo y la respuesta de procesamiento.
         """
@@ -508,7 +509,7 @@ class ArchivoService:
 
         rta_procesamiento = (
             self.rta_procesamiento_repository.get_id_rta_procesamiento_by_id_archivo(
-                archivo.id_archivo))
+                archivo.id_archivo, file_name ))
 
         if not rta_procesamiento:
             logger.error(

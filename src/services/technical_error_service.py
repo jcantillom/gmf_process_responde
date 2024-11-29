@@ -12,6 +12,9 @@ from sqlalchemy.orm import Session
 from src.repositories.archivo_estado_repository import ArchivoEstadoRepository
 from src.services.error_handling_service import ErrorHandlingService
 from src.utils.sqs_utils import send_message_to_sqs_with_delay
+import json
+from datetime import datetime
+from src.utils.sqs_utils import delete_message_from_sqs
 
 logger = get_logger(env.DEBUG_MODE)
 
@@ -34,6 +37,7 @@ class TechnicalErrorService:
             retry_delay,
             estado_inicial,
             receipt_handle,
+            file_name,
     ):
         id_archivo = self.archivo_repository.get_archivo_by_nombre_archivo(acg_nombre_archivo).id_archivo
         if file_id_and_response_processing_id_in_event:
