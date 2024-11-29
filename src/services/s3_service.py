@@ -272,7 +272,7 @@ class S3Utils:
             self.logger.error("Error al descomprimir el archivo .zip", extra={"event_filename": nombre_archivo})
             raise CustomFunctionError(
                 code=env.CONST_COD_ERROR_CORRUPTED_FILE,
-                message=".zip es inválido o está corrupto",
+                error_details=".zip es inválido o está corrupto",
                 is_technical_error=False,
             )
             return None

@@ -60,6 +60,9 @@ class EnvironmentSettings(BaseSettings):
     PARAMETER_STORE_TRANSVERSAL: str = ""
     CONST_COD_ERROR_TECHNICAL: str = ""
     CONST_COD_ERROR_NAME_FILE: str = ""
+    CONST_ESTADO_PROCESAMIENTO_FALLIDO: str = ""
+    CONST_ID_PLANTILLA_ERROR_TECHNICAL: str = ""
+    CONST_ESTADO_PROCESA_PENDIENTE_REINTENTO: str = ""
 
     class Config:
         env_file = ".env"

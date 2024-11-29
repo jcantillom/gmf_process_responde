@@ -108,3 +108,5 @@ class ArchivoRepository:
         archivo.codigo_error = code_error
         archivo.detalle_error = detail_error
         self.db.commit()
+
+

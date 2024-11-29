@@ -14,6 +14,7 @@ from unittest.mock import patch, MagicMock
 from sqlalchemy.orm import Session
 from src.repositories.rta_procesamiento_repository import RtaProcesamientoRepository
 from src.models.cgd_rta_procesamiento import CGDRtaProcesamiento
+from sqlalchemy.exc import IntegrityError
 
 
 class TestArchivoEstadoRepository(unittest.TestCase):
@@ -38,6 +39,40 @@ class TestArchivoEstadoRepository(unittest.TestCase):
         self.mock_db.add.assert_called_once()
         self.mock_db.commit.assert_called_once()
         self.mock_db.refresh.assert_called_once()
+
+    def test_insert_estado_archivo_integrity_error_duplicate_key(self):
+        # Simular un IntegrityError con detalle de clave duplicada
+        error = IntegrityError(
+            statement="INSERT INTO cgd_archivo_estado ...",
+            params=None,
+            orig=Exception("duplicate key value violates unique constraint 'unique_estado'")
+        )
+        self.mock_db.commit.side_effect = error
+
+        # Ejecutar la función y verificar que se lanza la excepción adecuada
+        with self.assertRaises(ValueError) as context:
+            self.repo.insert_estado_archivo(1, 'PENDIENTE', 'PROCESANDO')
+
+        # Verificar el mensaje de la excepción
+        self.assertIn("Error de clave duplicada", str(context.exception))
+        self.mock_db.rollback.assert_called_once()
+
+    def test_insert_estado_archivo_integrity_error_other(self):
+        # Simular un IntegrityError sin detalle de clave duplicada
+        error = IntegrityError(
+            statement="INSERT INTO cgd_archivo_estado ...",
+            params=None,
+            orig=Exception("some other database error")
+        )
+        self.mock_db.commit.side_effect = error
+
+        # Ejecutar la función y verificar que se lanza la excepción adecuada
+        with self.assertRaises(ValueError) as context:
+            self.repo.insert_estado_archivo(1, 'PENDIENTE', 'PROCESANDO')
+
+        # Verificar el mensaje de la excepción
+        self.assertIn("Error en la base de datos", str(context.exception))
+        self.mock_db.rollback.assert_called_once()
 
 
 class TestArchivoRepository(unittest.TestCase):
@@ -140,6 +175,28 @@ class TestArchivoRepository(unittest.TestCase):
 
         # Verificar que se agregó el archivo a la base de datos
         self.mock_db.add.assert_called_once_with(archivo)
+
+        # Verificar que se hizo commit a la base de datos
+        self.mock_db.commit.assert_called_once()
+
+    def test_insert_code_error(self):
+        # Configurar el archivo existente en la base de datos
+        id_archivo = 1
+        archivo_existente = CGDArchivo(id_archivo=id_archivo)
+
+        # Configurar el código de error y el detalle del error
+        code_error = "ER001"
+        detail_error = "Error de prueba"
+
+        # Configurar el comportamiento del mock
+        self.mock_db.query.return_value.filter.return_value.first.return_value = archivo_existente
+
+        # Llamar al método que estamos probando
+        self.repo.insert_code_error(id_archivo, code_error, detail_error)
+
+        # Verificar que el código de error y el detalle del error se actualizaron correctamente
+        self.assertEqual(archivo_existente.codigo_error, code_error)
+        self.assertEqual(archivo_existente.detalle_error, detail_error)
 
         # Verificar que se hizo commit a la base de datos
         self.mock_db.commit.assert_called_once()
@@ -250,35 +307,65 @@ class TestCGDRtaProArchivosRepository(unittest.TestCase):
         self.db_mock = MagicMock(spec=Session)
         self.repository = CGDRtaProArchivosRepository(self.db_mock)
 
-    def test_has_files_loaded_for_response_true(self):
+    def test_get_pending_files_by_id_archivo(self):
         # Datos de prueba
         id_archivo = 123
-        id_rta_procesamiento = 456
 
-        # Crear un mock del objeto CGDRtaProArchivos
+        # Configurar el mock para devolver un archivo pendiente
+        mock_file = MagicMock(spec=CGDRtaProArchivos)
+        self.db_mock.query().filter().all.return_value = [mock_file]
+
+        # Llamar a la función
+        result = self.repository.get_pending_files_by_id_archivo(id_archivo)
+
+        # Verificar el resultado
+        self.assertEqual(result, [mock_file])
+        self.db_mock.query().filter().all.assert_called_once()
+
+    def test_update_estado_to_enviado_existing_file(self):
+        # Datos de prueba
+        id_archivo = 123
+        nombre_archivo = "test_file.txt"
+
+        # Configurar el mock para devolver un archivo existente
         mock_file = MagicMock(spec=CGDRtaProArchivos)
         self.db_mock.query().filter().first.return_value = mock_file
 
         # Llamar a la función
-        result = self.repository.get_files_loaded_for_response(id_archivo, id_rta_procesamiento)
+        self.repository.update_estado_to_enviado(id_archivo, nombre_archivo)
 
-        # Verificar el resultado
-        self.assertTrue(result)
-        self.db_mock.query().filter().all.assert_called_once()
+        # Verificar que el estado se actualizó y que se llamó a commit
+        self.assertEqual(mock_file.estado, env.CONST_ESTADO_SEND)
+        self.db_mock.commit.assert_called_once()
 
-    def test_has_files_loaded_for_response_false(self):
+    def test_update_estado_to_enviado_no_file(self):
+        # Datos de prueba
+        id_archivo = 123
+        nombre_archivo = "test_file.txt"
+
+        # Configurar el mock para devolver None (archivo no encontrado)
+        self.db_mock.query().filter().first.return_value = None
+
+        # Llamar a la función
+        self.repository.update_estado_to_enviado(id_archivo, nombre_archivo)
+
+        # Verificar que no se llamó a commit
+        self.db_mock.commit.assert_not_called()
+
+    def test_get_files_loaded_for_response(self):
         # Datos de prueba
         id_archivo = 123
         id_rta_procesamiento = 456
 
-        # Configurar el mock para devolver None
-        self.db_mock.query().filter().all.return_value = []
+        # Configurar el mock para devolver archivos cargados
+        mock_file = MagicMock(spec=CGDRtaProArchivos)
+        self.db_mock.query().filter().all.return_value = [mock_file]
 
         # Llamar a la función
         result = self.repository.get_files_loaded_for_response(id_archivo, id_rta_procesamiento)
 
         # Verificar el resultado
-        self.assertFalse(result)
+        self.assertEqual(result, [mock_file])
         self.db_mock.query().filter().all.assert_called_once()
 
 
@@ -316,4 +403,3 @@ class TestRtaProcesamientoRepository(unittest.TestCase):
 
         # Verificar que get_last_rta_procesamiento fue llamado con el id correcto
         self.repository.get_last_rta_procesamiento.assert_called_once_with(id_archivo)
-

@@ -24,6 +24,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 from botocore.exceptions import ClientError
 from src.services.s3_service import S3Utils
+from src.core.custom_error import CustomFunctionError
 
 
 class Singleton(metaclass=SingletonMeta):
@@ -549,15 +550,21 @@ class TestS3UtilsZip(unittest.TestCase):
         self.s3_utils.s3.get_object.side_effect = BadZipFile
 
         # Ejecutar la función y verificar que se maneja el error
-        self.s3_utils.unzip_file_in_s3(
-            'test-bucket',
-            'bad-file.zip',
-            1,
-            'bad-file',
-            1,
-            'receipt_handle',
-            self.error_handling_service
-        )
+        with self.assertRaises(CustomFunctionError) as context:
+            self.s3_utils.unzip_file_in_s3(
+                'test-bucket',
+                'bad-file.zip',
+                1,
+                'bad-file',
+                1,
+                'receipt_handle',
+                self.error_handling_service
+            )
+
+        # Verificar que el error tenga el código correcto
+        self.assertEqual(context.exception.code, env.CONST_COD_ERROR_CORRUPTED_FILE)
+        self.assertEqual(context.exception.error_details, ".zip es inválido o está corrupto")
+        self.assertFalse(context.exception.is_technical_error)
 
         # Verificar que se manejó el error adecuadamente
         self.error_handling_service.handle_generic_error.assert_called_once()
@@ -584,16 +591,23 @@ class TestS3UtilsZip(unittest.TestCase):
         self.s3_utils.s3.get_object.return_value = {'Body': self.mock_zip_content}
         self.s3_utils.validator.is_valid_extracted_filename = MagicMock(return_value=True)
 
-        # Ejecutar la función
-        self.s3_utils.unzip_file_in_s3(
-            'test-bucket',
-            'test-file.zip',
-            1,
-            'test-file',
-            1,
-            'receipt_handle',
-            self.error_handling_service
-        )
+        # Ejecutar la función y verificar que se lanza la excepción
+        with self.assertRaises(CustomFunctionError) as context:
+            self.s3_utils.unzip_file_in_s3(
+                'test-bucket',
+                'test-file.zip',
+                1,
+                'test-file',
+                1,
+                'receipt_handle',
+                self.error_handling_service
+            )
+
+        # Verificar que el error tenga el código correcto
+        self.assertEqual(context.exception.code, env.CONST_COD_ERROR_UNEXPECTED_FILE_COUNT)
+        self.assertEqual(context.exception.error_details,
+                         "La cantidad de archivos descomprimidos no es igual a la cantidad esperada")
+        self.assertFalse(context.exception.is_technical_error)
 
         # Verificar que se manejó el error de cantidad de archivos inesperada
         self.error_handling_service.handle_generic_error.assert_called_once()

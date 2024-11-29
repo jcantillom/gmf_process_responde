@@ -70,26 +70,23 @@ class ArchivoService:
                 extra={"event_filename": file_name},
             )
             if e.is_technical_error:
-                self._handle_exception(event, file_name, bucket, receipt_handle)
-                # TODO: flujo de error tecnico.
                 self.tecnical_error_service.handle_technical_error(
                     event,
                     e.code,
                     e.error_details,
                     acg_nombre_archivo,
                     file_id_and_response_processing_id_in_event=(
-                        self.validate_file_id_and_response_processing_id(event)),
-
+                        self.validate_file_id_and_response_processing_id(acg_nombre_archivo)),
+                    max_retries=self.max_retries,
+                    retry_delay=self.retry_delay,
+                    estado_inicial=self.get_estado_archivo(acg_nombre_archivo),
+                    receipt_handle=receipt_handle,
                 )
-
-            self._handle_exception(event, file_name, bucket, receipt_handle)
-
         except Exception as e:
             logger.error(
                 f"Error al procesar el archivo: {e}",
                 extra={"event_filename": file_name},
             )
-            self._handle_exception(event, file_name, bucket, receipt_handle)
 
     # =======================================================================
     #                          FUNCIONES AUXILIARES
@@ -498,22 +495,29 @@ class ArchivoService:
                 return True
         return False
 
-    def validate_file_id_and_response_processing_id(self, event):
+    def validate_file_id_and_response_processing_id(self, acg_nombre_archivo):
         """
-        Valida si el evento contiene el file_id y el response_processing_id.
+        Valida si en la Db existe el archivo y la respuesta de procesamiento.
         """
-        records_data = extract_and_validate_event_data(event, required_keys=["file_id", "response_processing_id"])
-        for record in records_data:
-            file_id = record.get("file_id")
-            response_processing_id = record.get("response_processing_id")
-            # Validar explícitamente si los valores son None o inválidos
-            if not file_id or not response_processing_id:
-                logger.warning(
-                    "El evento no contiene valores válidos para file_id o response_processing_id.",
-                    extra={"file_id": file_id, "response_processing_id": response_processing_id},
-                )
-                return False
-        return bool(records_data)
+        archivo = self.archivo_repository.get_archivo_by_nombre_archivo(acg_nombre_archivo)
+        if not archivo:
+            logger.error(
+                f"El archivo {acg_nombre_archivo} no existe en la base de datos."
+            )
+            return False
+
+        rta_procesamiento = (
+            self.rta_procesamiento_repository.get_id_rta_procesamiento_by_id_archivo(
+                archivo.id_archivo))
+
+        if not rta_procesamiento:
+            logger.error(
+                f"La respuesta de procesamiento para el archivo {acg_nombre_archivo} no existe en la base de datos."
+            )
+            return False
+
+        return True
+
 
     def handle_reprocessing_with_ids(self, event, acg_nombre_archivo):
         """
@@ -635,6 +639,7 @@ class ArchivoService:
                 )
         else:
             logger.warning("El archivo es un re-procesamiento pero no se encuentra registrado en la base de datos.")
+            self._handle_new_file(file_name, bucket, receipt_handle, acg_nombre_archivo)
 
     def _handle_new_file(self, file_name, bucket, receipt_handle, acg_nombre_archivo):
         """Maneja el procesamiento de archivos nuevos."""
@@ -642,33 +647,3 @@ class ArchivoService:
             self.process_special_file(file_name, bucket, receipt_handle, acg_nombre_archivo)
         else:
             self.process_general_file(file_name, bucket, receipt_handle, acg_nombre_archivo)
-
-    def _handle_exception(self, event, file_name, bucket, receipt_handle):
-        """Maneja las excepciones y reintentos."""
-        retry_count = event.get("retry_count", 0) + 1
-
-        if retry_count < self.max_retries:
-            logger.info("Reenviando mensaje a la cola con un retraso de 15 minutos.")
-            new_message = {**event, "retry_count": retry_count}
-            send_message_to_sqs_with_delay(
-                queue_url=env.SQS_URL_PRO_RESPONSE_TO_PROCESS,
-                message_body=new_message,
-                filename=file_name,
-                delay_seconds=900,
-            )
-        else:
-            logger.error(
-                "Error al procesar el archivo; se superó el número máximo de reintentos.",
-                extra={"event_filename": file_name},
-            )
-            self.error_handling_service.handle_error_master(
-                id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
-                filekey=f"{env.DIR_RECEPTION_FILES}/{file_name}",
-                bucket=bucket,
-                receipt_handle=receipt_handle,
-                codigo_error=env.CONST_COD_ERROR_TECHNICAL,
-                filename=file_name,
-            )
-
-        if receipt_handle:
-            delete_message_from_sqs(receipt_handle, env.SQS_URL_PRO_RESPONSE_TO_PROCESS, file_name)
