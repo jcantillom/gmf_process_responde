@@ -20,7 +20,7 @@ class TestLoggerCustomFormat(unittest.TestCase):
             exc_info=None
         )
 
-        # Agregar manualmente el atributo event_filename para simular el log
+        # Agregar manualmente el atributo request_id para simular el log
         record.event_filename = "test_file.txt"
 
         # Formatear el mensaje
@@ -29,7 +29,7 @@ class TestLoggerCustomFormat(unittest.TestCase):
         # Verificar el formato
         self.assertIn("[DEBUG]", formatted_message)
         self.assertIn("test/path/to/file.py:42", formatted_message)
-        self.assertIn("[test_file.txt]", formatted_message)
+        self.assertIn("[test_file.txt]", formatted_message)  # Verificar que request_id aparece
         self.assertIn("- Mensaje de prueba", formatted_message)
 
     def test_logger_custom_format_without_file_name(self):
@@ -81,7 +81,7 @@ class TestLoggerCustomFormat(unittest.TestCase):
         self.assertIn('"level": "DEBUG"', formatted_message)
         self.assertIn('"module_name": "test/path/to/file.py"', formatted_message)
         self.assertIn('"line_number": 42', formatted_message)
-        self.assertIn('"file_name": "test_file.txt"', formatted_message)
+        self.assertIn('"request_id": "test_file.txt"', formatted_message)
         self.assertIn('"message": "Mensaje de prueba en JSON"', formatted_message)
 
 

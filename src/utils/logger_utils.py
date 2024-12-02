@@ -29,34 +29,35 @@ class CustomFormatter(logging.Formatter):
         project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))
         module_name = os.path.relpath(record.pathname, start=project_root)
 
-        # Datos básicos del log
+        # Construcción del log ordenado
         log_data = {
             "timestamp": record_time,
             "level": record.levelname,
             "module_name": module_name,
             "line_number": record.lineno,
-            "message": record.getMessage()
         }
 
-        # Agregar nombre de archivo si está disponible
+        # Agregar file_name si está presente
         if hasattr(record, "event_filename") and record.event_filename:
-            log_data["file_name"] = record.event_filename
+            log_data["request_id"] = record.event_filename
+
+        # Agregar el mensaje al final
+        log_data["message"] = record.getMessage()
 
         if self.use_json:
-            # Retornar JSON legible
-            return json.dumps(log_data, ensure_ascii=False, indent=2)
+            # Retornar JSON compacto (una sola línea)
+            return json.dumps(log_data, ensure_ascii=False)
         else:
             # Formato legible en texto
             level_color = LOG_COLORS.get(record.levelname, "")
             level_name = f"{level_color}[{record.levelname}]{Style.RESET_ALL}"
 
-            # Usar get para evitar KeyError
-            file_name_str = f"[{log_data.get('file_name', '')}]" if log_data.get('file_name') else ""
+            request_id_str = f"[{log_data['request_id']}]" if log_data.get('request_id') else ""
 
             formatted_log = (
                 f"{record_time} {level_name} "
                 f"{log_data['module_name']}:{log_data['line_number']} "
-                f"{file_name_str} "
+                f"{request_id_str} "
                 f"- {log_data['message']}"
             )
             return formatted_log

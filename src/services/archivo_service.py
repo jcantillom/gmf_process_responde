@@ -402,7 +402,6 @@ class ArchivoService:
                     filename=file_name,
                 )
 
-
             # verificar si el archivo existe en la base de datos
             else:
                 logger.debug(
