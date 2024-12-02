@@ -74,6 +74,7 @@ class S3Utils:
 
         except ClientError as e:
             self.logger.error("Error al mover el archivo a Rechazados: %s", e)
+            sys.exit(1)
 
     def move_file_to_procesando(self, bucket_name: str, file_name: str) -> str:
         """
@@ -81,10 +82,6 @@ class S3Utils:
         :returns: La clave de destino del archivo.
         """
         source_key = f"{env.DIR_RECEPTION_FILES}/{file_name}"
-
-        # Obtener el año y mes actual para crear la ruta
-        current_date = datetime.now()
-        # year_month_folder = current_date.strftime("%Y%m")
 
         # Crear la nueva clave de destino con la carpeta de año y mes
         destination_key = f"{env.DIR_PROCESSING_FILES}/{file_name}"

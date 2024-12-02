@@ -25,7 +25,8 @@ from unittest.mock import MagicMock, patch
 from botocore.exceptions import ClientError
 from src.services.s3_service import S3Utils
 from src.core.custom_error import CustomFunctionError
-
+from unittest.mock import patch
+from datetime import datetime
 
 class Singleton(metaclass=SingletonMeta):
     pass
@@ -417,7 +418,12 @@ class TestS3Utils(unittest.TestCase):
         result = self.s3_utils.check_file_exists_in_s3('test-bucket', 'test-key')
         self.assertFalse(result)
 
-    def test_move_file_to_rechazados_success(self):
+    @patch("src.services.s3_service.datetime")
+    def test_move_file_to_rechazados_success(self, mock_datetime):
+        # Simular una fecha específica
+        mock_datetime.now.return_value = datetime(2024, 11, 1)
+        mock_datetime.side_effect = lambda *args, **kwargs: datetime(*args, **kwargs)
+
         # Simular que el archivo existe
         self.s3_utils.check_file_exists_in_s3 = MagicMock(return_value=True)
 
@@ -432,10 +438,11 @@ class TestS3Utils(unittest.TestCase):
         # Llamar a la función que se está probando
         destination = self.s3_utils.move_file_to_rechazados('test-bucket', 'test-key')
 
+        # Verificar que la ruta destino no sea None
+        self.assertIsNotNone(destination)
+
         # Verificar la ruta destino y la llamada a S3
         self.assertTrue(destination.startswith(env.DIR_REJECTED_FILES))
-
-        # Verificar que solo se llamó una vez a copy_object y delete_object
         self.s3_utils.s3.copy_object.assert_called_once_with(
             Bucket='test-bucket',
             CopySource={'Bucket': 'test-bucket', 'Key': 'test-key'},

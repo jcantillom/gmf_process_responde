@@ -63,6 +63,7 @@ class EnvironmentSettings(BaseSettings):
     CONST_ESTADO_PROCESAMIENTO_FALLIDO: str = ""
     CONST_ID_PLANTILLA_ERROR_TECHNICAL: str = ""
     CONST_ESTADO_PROCESA_PENDIENTE_REINTENTO: str = ""
+    LOG_FORMAT: str = ""
 
     model_config = ConfigDict(env_file=".env")
 

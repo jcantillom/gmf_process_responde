@@ -1,38 +1,88 @@
 import unittest
 import logging
-
 from src.utils.logger_utils import CustomFormatter, get_logger
 
 
 class TestLoggerCustomFormat(unittest.TestCase):
 
-    def test_logger_custom_format(self):
-        logger = get_logger(debug_mode=True)
+    def test_logger_custom_format_as_string(self):
+        # Configurar logger y formateador
+        formatter = CustomFormatter(use_json=False)
 
-        # Crea un handler y un formatter reales
-        stream_handler = logging.StreamHandler()
-        formatter = CustomFormatter()  # Instancia real del formateador
-        stream_handler.setFormatter(formatter)
-        logger.addHandler(stream_handler)
-
-        # Crea un LogRecord simulado
+        # Crear un LogRecord simulado
         record = logging.LogRecord(
-            name=logger.name,
+            name="test_logger",
             level=logging.DEBUG,
-            pathname='test/path/to/file.py',
+            pathname="test/path/to/file.py",
             lineno=42,
-            msg='Mensaje de prueba',
+            msg="Mensaje de prueba",
             args=None,
             exc_info=None
         )
 
-        # Formatear el mensaje usando el formateador real
-        formatted_message = logger.handlers[0].formatter.format(record)
+        # Agregar manualmente el atributo event_filename para simular el log
+        record.event_filename = "test_file.txt"
 
-        # Verifica que el mensaje formateado contiene la información esperada
+        # Formatear el mensaje
+        formatted_message = formatter.format(record)
+
+        # Verificar el formato
         self.assertIn("[DEBUG]", formatted_message)
-        self.assertIn("[test/path/to/file.py:42]", formatted_message)
+        self.assertIn("test/path/to/file.py:42", formatted_message)
+        self.assertIn("[test_file.txt]", formatted_message)
         self.assertIn("- Mensaje de prueba", formatted_message)
+
+    def test_logger_custom_format_without_file_name(self):
+        # Configurar logger y formateador
+        formatter = CustomFormatter(use_json=False)
+
+        # Crear un LogRecord simulado
+        record = logging.LogRecord(
+            name="test_logger",
+            level=logging.DEBUG,
+            pathname="test/path/to/file.py",
+            lineno=42,
+            msg="Mensaje de prueba sin archivo",
+            args=None,
+            exc_info=None
+        )
+
+        # Formatear el mensaje
+        formatted_message = formatter.format(record)
+
+        # Verificar el formato sin file_name
+        self.assertIn("[DEBUG]", formatted_message)
+        self.assertIn("test/path/to/file.py:42", formatted_message)
+        self.assertNotIn("[]", formatted_message)  # No debe incluir un file_name vacío
+        self.assertIn("- Mensaje de prueba sin archivo", formatted_message)
+
+    def test_logger_custom_format_as_json(self):
+        # Configurar logger y formateador
+        formatter = CustomFormatter(use_json=True)
+
+        # Crear un LogRecord simulado
+        record = logging.LogRecord(
+            name="test_logger",
+            level=logging.DEBUG,
+            pathname="test/path/to/file.py",
+            lineno=42,
+            msg="Mensaje de prueba en JSON",
+            args=None,
+            exc_info=None
+        )
+
+        # Agregar manualmente el atributo event_filename para simular el log
+        record.event_filename = "test_file.txt"
+
+        # Formatear el mensaje
+        formatted_message = formatter.format(record)
+
+        # Verificar el formato JSON
+        self.assertIn('"level": "DEBUG"', formatted_message)
+        self.assertIn('"module_name": "test/path/to/file.py"', formatted_message)
+        self.assertIn('"line_number": 42', formatted_message)
+        self.assertIn('"file_name": "test_file.txt"', formatted_message)
+        self.assertIn('"message": "Mensaje de prueba en JSON"', formatted_message)
 
 
 class TestLogger(unittest.TestCase):
@@ -45,61 +95,4 @@ class TestLogger(unittest.TestCase):
         logger = get_logger(debug_mode=False)
         self.assertEqual(logger.level, logging.INFO)
 
-    def test_logger_formatting(self):
-        logger = get_logger(debug_mode=True)
 
-        # Use the actual StreamHandler and CustomFormatter
-        stream_handler = logging.StreamHandler()
-        formatter = CustomFormatter()
-        stream_handler.setFormatter(formatter)
-        logger.addHandler(stream_handler)
-
-        # Simula un mensaje de log
-        logger.debug("Este es un mensaje de debug")
-
-        # Create a LogRecord for checking formatting
-        record = logging.LogRecord(
-            name=logger.name,
-            level=logging.DEBUG,
-            pathname='test/path/to/file.py',
-            lineno=55,
-            msg='Este es un mensaje de debug',
-            args=None,
-            exc_info=None
-        )
-
-        # Format the message using the real formatter
-        formatted_message = logger.handlers[0].formatter.format(record)
-
-        # Check that the formatted message includes the expected components
-        self.assertIn("[DEBUG]", formatted_message)
-        self.assertIn("[test/path/to/file.py:55]", formatted_message)
-        self.assertIn("- Este es un mensaje de debug", formatted_message)
-
-    def test_logger_custom_format(self):
-        logger = get_logger(debug_mode=True)
-
-        # Create a handler and use the real formatter
-        stream_handler = logging.StreamHandler()
-        formatter = CustomFormatter()  # Use the real formatter
-        stream_handler.setFormatter(formatter)
-        logger.addHandler(stream_handler)
-
-        # Create a LogRecord simulated
-        record = logging.LogRecord(
-            name=logger.name,
-            level=logging.DEBUG,
-            pathname='test/path/to/file.py',
-            lineno=42,
-            msg='Mensaje de prueba',
-            args=None,
-            exc_info=None
-        )
-
-        # Format the message using the real formatter
-        formatted_message = logger.handlers[0].formatter.format(record)
-
-        # Verify that the formatted message contains the expected information
-        self.assertIn("[DEBUG]", formatted_message)
-        self.assertIn("[test/path/to/file.py:42]", formatted_message)
-        self.assertIn("- Mensaje de prueba", formatted_message)
