@@ -28,7 +28,6 @@ class EnvironmentSettings(BaseSettings):
     CONST_PRE_SPECIAL_FILE: str = ""
     CONST_PRE_GENERAL_FILE: str = ""
     CONST_ID_PLANTILLA_EMAIL: str = ""
-    CONST_COD_ERROR_EMAIL: str = ""
     DIR_RECEPTION_FILES: str = ""
     DIR_PROCESSED_FILES: str = ""
     DIR_REJECTED_FILES: str = ""

@@ -25,7 +25,7 @@ import sys
 import time
 import json
 from .technical_error_service import TechnicalErrorService
-from pytz import timezone
+import pytz
 
 logger = get_logger(env.DEBUG_MODE)
 
@@ -447,7 +447,7 @@ class ArchivoService:
     def insertar_archivo_nuevo_especial(self, filename, acg_nombre_archivo):
         """ Inserta un nuevo archivo especial en la base de datos y continúa con el procesamiento. """
         # Obtener la hora de Colombia (UTC-5)
-        colombia_tz = timezone("America/Bogota")
+        colombia_tz = pytz.timezone("America/Bogota")
         current_time = datetime.now(colombia_tz)
 
         new_archivo = CGDArchivo(
