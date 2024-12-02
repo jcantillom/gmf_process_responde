@@ -255,14 +255,14 @@ class ArchivoService:
                 self.rta_procesamiento_repository.get_last_contador_intentos_cargue(
                     int(archivo_id)
                 )
-                + 1
         )
         # Insertar en CGD_ARCHIVO_ESTADOS
+        fecha_truncada = datetime.now().replace(microsecond=(datetime.now().microsecond // 1000) * 1000)
         self.estado_archivo_repository.insert_estado_archivo(
             id_archivo=int(archivo_id),
             estado_inicial=estado,
             estado_final=env.CONST_ESTADO_LOAD_RTA_PROCESSING,
-            fecha_cambio_estado=fecha_cambio_estado,
+            fecha_cambio_estado=fecha_truncada,
         )
         logger.debug(
             f"Se inserta el estado del archivo {file_name} en CGD_ARCHIVO_ESTADOS",
@@ -432,6 +432,18 @@ class ArchivoService:
                     )
                     # procesar archivo.
                     self.procesar_archivo(bucket, file_name, acg_nombre_archivo, estado_archivo, receipt_handle)
+        else:
+            self.error_handling_service.handle_error_master(
+                id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
+                filekey=f"{env.DIR_RECEPTION_FILES}/{file_name}",
+                bucket=bucket,
+                receipt_handle=receipt_handle,
+                codigo_error=env.CONST_COD_ERROR_NAME_FILE,
+                filename=file_name,
+            )
+            logger.error(
+                f"Formato de archivo general {file_name} no válido; mensaje eliminado."
+            )
 
     def insertar_archivo_nuevo_especial(self, filename, acg_nombre_archivo):
         """ Inserta un nuevo archivo especial en la base de datos y continúa con el procesamiento. """
@@ -512,7 +524,7 @@ class ArchivoService:
 
         rta_procesamiento = (
             self.rta_procesamiento_repository.get_id_rta_procesamiento_by_id_archivo(
-                archivo.id_archivo, file_name ))
+                archivo.id_archivo, file_name))
 
         if not rta_procesamiento:
             logger.error(
@@ -521,7 +533,6 @@ class ArchivoService:
             return False
 
         return True
-
 
     def handle_reprocessing_with_ids(self, event, acg_nombre_archivo):
         """
