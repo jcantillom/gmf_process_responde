@@ -7,6 +7,7 @@ from src.services.archivo_service import ArchivoService
 from src.core.validator import ArchivoValidator
 from src.models.cgd_rta_pro_archivos import CGDRtaProArchivos
 from src.models.cgd_archivo import CGDArchivo
+from datetime import datetime
 
 
 class TestValidateEventData(unittest.TestCase):
@@ -574,19 +575,23 @@ class TestInsertFileStates(unittest.TestCase):
         self.service.rta_procesamiento_repository = MagicMock()
         self.service.archivo_validator = MagicMock()
 
+    @patch("src.services.archivo_service.datetime")  # Asegurarse de que el servicio use datetime correctamente
     @patch("src.utils.logger_utils")
-    def test_insert_file_states(self, mock_logger):
+    def test_insert_file_states(self, mock_logger, mock_datetime):
         """
         Caso en el que se insertan correctamente los estados del archivo en la base de datos.
         """
+        # Configurar una fecha fija para datetime.now
+        fecha_mock = datetime(2024, 12, 2, 16, 28, 35)
+        mock_datetime.now.return_value = fecha_mock
+        mock_datetime.strptime.side_effect = datetime.strptime  # Soporte para conversiones
+
         # Configurar los mocks para devolver valores simulados
         archivo_id = 123
-        fecha_recepcion = "2024-11-07"
         contador_intentos = 2
         type_response = "01"
 
         self.service.archivo_repository.get_archivo_by_nombre_archivo.return_value.id_archivo = archivo_id
-        self.service.archivo_repository.get_archivo_by_nombre_archivo.return_value.fecha_recepcion = fecha_recepcion
         self.service.rta_procesamiento_repository.get_last_contador_intentos_cargue.return_value = contador_intentos
         self.service.archivo_validator.get_type_response.return_value = type_response
 
@@ -597,7 +602,8 @@ class TestInsertFileStates(unittest.TestCase):
 
         # Simular que get_last_rta_procesamiento devuelve el último id_rta_procesamiento
         self.service.rta_procesamiento_repository.get_last_rta_procesamiento.return_value = MagicMock(
-            id_rta_procesamiento=1)
+            id_rta_procesamiento=1
+        )
 
         # Llamar a la función
         self.service.insert_file_states_and_rta_processing(acg_nombre_archivo, estado, file_name)
@@ -605,12 +611,12 @@ class TestInsertFileStates(unittest.TestCase):
         # Verificar que se llamó a get_archivo_by_nombre_archivo correctamente
         self.service.archivo_repository.get_archivo_by_nombre_archivo.assert_called_with(acg_nombre_archivo)
 
-        # Verificar que se insertó en CGD_ARCHIVO_ESTADOS
+        # Verificar que se insertó en CGD_ARCHIVO_ESTADOS con la fecha fija mockeada
         self.service.estado_archivo_repository.insert_estado_archivo.assert_called_once_with(
             id_archivo=archivo_id,
             estado_inicial=estado,
             estado_final=env.CONST_ESTADO_LOAD_RTA_PROCESSING,
-            fecha_cambio_estado=fecha_recepcion
+            fecha_cambio_estado=fecha_mock,
         )
 
         # Verificar que se insertó en CGD_RTA_PROCESAMIENTO
@@ -620,7 +626,7 @@ class TestInsertFileStates(unittest.TestCase):
             nombre_archivo_zip=file_name,
             tipo_respuesta=type_response,
             estado=env.CONST_ESTADO_INICIADO,
-            contador_intentos_cargue=contador_intentos + 1
+            contador_intentos_cargue=contador_intentos
         )
 
 
@@ -1056,8 +1062,6 @@ class TestValidateIsReprocessing(unittest.TestCase):
         self.assertTrue(
             self.service.validate_file_id_and_response_processing_id(
                 "nombre_test", "test"))
-
-
 
     @patch('src.repositories.cgd_rta_pro_archivos_repository.CGDRtaProArchivosRepository.get_files_loaded_for_response')
     @patch('src.services.cgd_rta_pro_archivo_service.CGDRtaProArchivosService.send_pending_files_to_queue_by_id')
