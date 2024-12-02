@@ -584,7 +584,7 @@ class TestInsertFileStates(unittest.TestCase):
         # Configurar una fecha fija para datetime.now
         fecha_mock = datetime(2024, 12, 2, 16, 28, 35)
         mock_datetime.now.return_value = fecha_mock
-        mock_datetime.strptime.side_effect = datetime.strptime  # Soporte para conversiones
+        mock_datetime.strptime.side_effect = datetime.strptime
 
         # Configurar los mocks para devolver valores simulados
         archivo_id = 123

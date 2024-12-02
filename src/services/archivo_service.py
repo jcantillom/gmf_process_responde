@@ -25,6 +25,7 @@ import sys
 import time
 import json
 from .technical_error_service import TechnicalErrorService
+from pytz import timezone
 
 logger = get_logger(env.DEBUG_MODE)
 
@@ -248,13 +249,11 @@ class ArchivoService:
         archivo_id = self.archivo_repository.get_archivo_by_nombre_archivo(
             acg_nombre_archivo
         ).id_archivo
-        fecha_cambio_estado = self.archivo_repository.get_archivo_by_nombre_archivo(
-            acg_nombre_archivo
-        ).fecha_recepcion
+
         last_counter = (
-                self.rta_procesamiento_repository.get_last_contador_intentos_cargue(
-                    int(archivo_id)
-                )
+            self.rta_procesamiento_repository.get_last_contador_intentos_cargue(
+                int(archivo_id)
+            )
         )
         # Insertar en CGD_ARCHIVO_ESTADOS
         fecha_truncada = datetime.now().replace(microsecond=(datetime.now().microsecond // 1000) * 1000)
@@ -448,7 +447,7 @@ class ArchivoService:
     def insertar_archivo_nuevo_especial(self, filename, acg_nombre_archivo):
         """ Inserta un nuevo archivo especial en la base de datos y continúa con el procesamiento. """
         # Obtener la hora de Colombia (UTC-5)
-        colombia_tz = timezone(timedelta(hours=-5))
+        colombia_tz = timezone("America/Bogota")
         current_time = datetime.now(colombia_tz)
 
         new_archivo = CGDArchivo(
