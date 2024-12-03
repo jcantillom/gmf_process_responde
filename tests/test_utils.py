@@ -12,6 +12,7 @@ from src.core.process_event import (
     build_acg_name_if_general_file,
     extract_and_validate_event_data,
 )
+from src.services import s3_service
 from src.utils.sqs_utils import (
     delete_message_from_sqs,
     send_message_to_sqs,
@@ -27,6 +28,8 @@ from src.services.s3_service import S3Utils
 from src.core.custom_error import CustomFunctionError
 from unittest.mock import patch
 from datetime import datetime
+from src.repositories.rta_procesamiento_repository import RtaProcesamientoRepository
+
 
 class Singleton(metaclass=SingletonMeta):
     pass
@@ -675,3 +678,43 @@ class TestExtractAndValidateEventData(unittest.TestCase):
         self.assertEqual(result, [])
         mock_error.assert_called_once()
         mock_warning.assert_called_once()
+
+
+class TestGetCantidadDeArchivosEsperadosEnElZip(unittest.TestCase):
+    @patch('boto3.client')
+    @patch('src.services.aws_clients_service.AWSClients.get_ssm_client')
+    @patch('src.services.aws_clients_service.AWSClients.get_s3_client')
+    def setUp(self, mock_boto_client, mock_get_ssm_client, mock_get_s3_client):
+        # Configurar el mock para el cliente S3 y SSM
+        mock_ssm_client = MagicMock()
+        mock_s3_client = MagicMock()
+
+        mock_get_ssm_client.return_value = mock_ssm_client
+        mock_get_s3_client.return_value = mock_s3_client
+
+        mock_ssm_client.get_parameter.return_value = {
+            'Parameter': {
+                'Value': '{"special_start": "RE_ESP",'
+                         ' "special_end": "0001", '
+                         '"general_start": "RE_GEN", '
+                         '"files-reponses-debito-reverso": "001,002", '
+                         '"files-reponses-reintegros": "R", '
+                         '"files-reponses-especiales": "ESP"}'
+            }
+        }
+
+        self.mock_db = MagicMock()
+        self.service = s3_service.S3Utils(self.mock_db)
+        self.service.rta_procesamiento_repository = MagicMock(spec=RtaProcesamientoRepository)
+
+    def test_valid_tipo_respuesta_01(self):
+        """Test para tipo_respuesta válido '01'."""
+        self.service.rta_procesamiento_repository.get_tipo_respuesta.return_value = "01"
+        id_archivo = 123
+        nombre_archivo = "archivo_test.zip"
+
+        expected_file_count, tipo_respuesta = self.service.get_cantidad_de_archivos_esperados_en_el_zip(
+            id_archivo, nombre_archivo)
+
+        self.assertEqual(expected_file_count, 5)
+        self.assertEqual(tipo_respuesta, "01")

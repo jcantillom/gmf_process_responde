@@ -320,3 +320,19 @@ class ArchivoValidator:
             extra={"event_filename": acg_nombre_archivo})
 
         return True
+
+    @staticmethod
+    def extract_date_from_filename(filename):
+        # Buscar una secuencia de 8 dígitos consecutivos después del patrón esperado
+        match = re.search(r'[A-Z]+[0-9]+([0-9]{8})', filename)
+        if match:
+            potential_date = match.group(1)
+            try:
+                # Validar que sea una fecha válida
+                datetime.strptime(potential_date, '%Y%m%d')
+                return potential_date
+            except ValueError:
+                # Si no es válida, devolver None
+                print(f"Error en el formato de fecha {potential_date}.")
+                return None
+        return None

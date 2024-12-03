@@ -110,7 +110,8 @@ class TestArchivoValidator(unittest.TestCase):
         # Assert
         self.assertTrue(result)
 
-    @patch('src.services.aws_clients_service.AWSClients.get_ssm_client')  # Parchea la función que obtiene el cliente SSM
+    @patch(
+        'src.services.aws_clients_service.AWSClients.get_ssm_client')  # Parchea la función que obtiene el cliente SSM
     @patch.dict(os.environ, {
         'PARAMETER_STORE_FILE_CONFIG': '/gmf/process-responses/general-config',
         'SPECIAL_START_NAME': 'special_start',
@@ -644,3 +645,84 @@ class TestIsSpecialFile(unittest.TestCase):
         mock_logger.debug.assert_called_with(
             f"La fecha 20241114 en el archivo {filename} es mayor a la fecha actual."
         )
+
+
+class TestExtractDateFromFilename(unittest.TestCase):
+    @patch('src.services.aws_clients_service.AWSClients.get_ssm_client')
+    @patch('src.config.config.env')
+    def setUp(self, mock_env, mock_get_ssm_client):
+        """Configura el objeto para las pruebas."""
+        # Configurar el entorno
+        mock_env.CONST_PRE_SPECIAL_FILE = "PREFIX"
+        mock_env.CONST_PRE_GENERAL_FILE = "GENERAL"
+
+        # Simular la respuesta del cliente SSM
+        mock_ssm_client_instance = MagicMock()
+        mock_get_ssm_client.return_value = mock_ssm_client_instance
+
+        mock_response = {
+            'Parameter': {
+                'Value': json.dumps({
+                    "suffixes_tipo_1": ["sufijo1", "sufijo2"],
+                    "special_prefix": "PREFIX",
+                    "general_prefix": "GENERAL"
+                })
+            }
+        }
+        mock_ssm_client_instance.get_parameter.return_value = mock_response
+
+        self.validator = ArchivoValidator()
+        self.validator.special_start = "PREFIX"
+        self.validator.special_end = "SUFFIX"
+
+    def test_valid_date_in_filename(self):
+        """Test para un archivo con una fecha válida."""
+        filename = "RE_ESP_TUTGMF0001003920241021-0001.zip"
+        expected_date = "20241021"
+
+        # Llamar a la función con la instancia
+        result = self.validator.extract_date_from_filename(filename)
+        self.assertEqual(result, expected_date)
+
+    def test_invalid_date_in_filename(self):
+        """Test para un archivo con una fecha inválida."""
+        filename = "RE_ESP_TUTGMF0001003920241021-0001.zip"
+        expected_date = "20241022"
+
+        # Llamar a la función con la instancia
+        result = self.validator.extract_date_from_filename(filename)
+        self.assertNotEqual(result, expected_date)
+
+    def test_invalid_date_format_in_filename(self):
+        """Test para un archivo con formato de fecha inválido."""
+        filename = "RE_ESP_TUTGMF0001003920241321-0001.zip"  # 20241321 no es válido
+        result = self.validator.extract_date_from_filename(filename)
+        self.assertIsNone(result)
+
+    def test_multiple_numbers_in_filename(self):
+        """Test para un archivo con múltiples números pero solo una fecha válida."""
+        filename = "RE_ESP_TUTGMF1234500010020241021-0001.zip"
+        expected_date = "20241021"
+        result = self.validator.extract_date_from_filename(filename)
+        self.assertEqual(result, expected_date)
+
+    def test_date_with_other_patterns(self):
+        """Test para un archivo con números pero sin el patrón esperado."""
+        filename = "20241021_RE_ESP_TUTGMF0001-0001.zip"  # Fecha no en el patrón
+        result = self.validator.extract_date_from_filename(filename)
+        self.assertIsNone(result)
+
+    def test_special_characters_in_filename(self):
+        """Test para un archivo con caracteres especiales pero que contiene una fecha válida."""
+        filename = "RE_ESP_TUTGMF0001003920241021-!@#$%.zip"
+        expected_date = "20241021"
+        result = self.validator.extract_date_from_filename(filename)
+        self.assertEqual(result, expected_date)
+
+    def test_short_filename(self):
+        """Test para un archivo con nombre muy corto sin fecha."""
+        filename = "RE_ESP.zip"
+        result = self.validator.extract_date_from_filename(filename)
+        self.assertIsNone(result)
+
+

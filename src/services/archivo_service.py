@@ -466,7 +466,7 @@ class ArchivoService:
             contador_intentos_empaquetado=0,
             nombre_archivo=filename.rsplit(".", 1)[0],
             consecutivo_plataforma_origen=1,
-            fecha_ciclo=datetime.now(),
+            fecha_ciclo=self.archivo_validator.extract_date_from_filename(filename),
         )
         self.archivo_repository.insert_archivo(new_archivo)
         logger.debug(
