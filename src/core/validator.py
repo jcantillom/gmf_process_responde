@@ -323,8 +323,8 @@ class ArchivoValidator:
 
     @staticmethod
     def extract_date_from_filename(filename):
-        # Buscar una secuencia de 8 dígitos consecutivos después del patrón esperado
-        match = re.search(r'[A-Z]+[0-9]+([0-9]{8})', filename)
+        # Usar una expresión regular optimizada con \d en lugar de [0-9]
+        match = re.search(r'[A-Z]{2,}\d{2,}(\d{8})', filename)
         if match:
             potential_date = match.group(1)
             try:
@@ -336,3 +336,6 @@ class ArchivoValidator:
                 print(f"Error en el formato de fecha {potential_date}.")
                 return None
         return None
+
+
+
