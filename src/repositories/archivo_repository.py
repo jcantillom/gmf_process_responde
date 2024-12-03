@@ -58,7 +58,7 @@ class ArchivoRepository:
 
         :param nombre_archivo: Nombre del archivo a actualizar.
         :param estado: Nuevo estado del archivo.
-        :param contador_intentos_cargue: Contador de intentos de cargue.
+
 
         """
         archivo = self.get_archivo_by_nombre_archivo(nombre_archivo)

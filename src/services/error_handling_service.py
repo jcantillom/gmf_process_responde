@@ -89,7 +89,6 @@ class ErrorHandlingService:
             bucket_name: str,
             receipt_handle: str,
             file_name: str,
-            contador_intentos_cargue: int,
             codigo_error: str,
             id_plantilla: str):
         """

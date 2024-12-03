@@ -668,7 +668,6 @@ class TestUnzipFile(unittest.TestCase):
             new_file_key,
             archivo_id,
             acg_nombre_archivo,
-            new_counter,
             receipt_handle,
             error_handling_service,
         )
@@ -679,7 +678,6 @@ class TestUnzipFile(unittest.TestCase):
             new_file_key,
             int(archivo_id),
             acg_nombre_archivo,
-            new_counter,
             receipt_handle,
             error_handling_service,
         )

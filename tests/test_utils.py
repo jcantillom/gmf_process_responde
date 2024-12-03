@@ -545,7 +545,6 @@ class TestS3UtilsZip(unittest.TestCase):
             'test-file.zip',
             1,
             'test-file',
-            1,
             'receipt_handle',
             self.error_handling_service
         )
@@ -566,7 +565,6 @@ class TestS3UtilsZip(unittest.TestCase):
                 'bad-file.zip',
                 1,
                 'bad-file',
-                1,
                 'receipt_handle',
                 self.error_handling_service
             )
@@ -590,7 +588,6 @@ class TestS3UtilsZip(unittest.TestCase):
             'test-file.zip',
             1,
             'test-file',
-            1,
             'receipt_handle',
             self.error_handling_service
         )
@@ -608,7 +605,6 @@ class TestS3UtilsZip(unittest.TestCase):
                 'test-file.zip',
                 1,
                 'test-file',
-                1,
                 'receipt_handle',
                 self.error_handling_service
             )

@@ -94,7 +94,6 @@ class TestErrorHandlingService(unittest.TestCase):
             bucket_name=bucket_name,
             receipt_handle=receipt_handle,
             file_name=file_name,
-            contador_intentos_cargue=contador_intentos_cargue,
             codigo_error=env.CONST_COD_ERROR_UNEXPECTED_FILE_COUNT,
             id_plantilla="template123"
         )

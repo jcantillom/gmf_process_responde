@@ -25,7 +25,7 @@ import sys
 import time
 import json
 from .technical_error_service import TechnicalErrorService
-import pytz
+from zoneinfo import ZoneInfo
 
 logger = get_logger(env.DEBUG_MODE)
 
@@ -257,7 +257,7 @@ class ArchivoService:
                            )
                        ) + 1
         # Insertar en CGD_ARCHIVO_ESTADOS
-        colombia_tz = pytz.timezone("America/Bogota")
+        colombia_tz = ZoneInfo("America/Bogota")
         fecha_colombia = datetime.now(colombia_tz)
         fecha_formateada = fecha_colombia.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
 
@@ -306,7 +306,6 @@ class ArchivoService:
             new_file_key,
             archivo_id,
             acg_nombre_archivo,
-            new_counter,
             receipt_handle,
             error_handling_service,
     ):
@@ -319,7 +318,6 @@ class ArchivoService:
             new_file_key,
             int(archivo_id),
             acg_nombre_archivo,
-            new_counter,
             receipt_handle,
             error_handling_service,
         )
@@ -451,7 +449,7 @@ class ArchivoService:
     def insertar_archivo_nuevo_especial(self, filename, acg_nombre_archivo):
         """ Inserta un nuevo archivo especial en la base de datos y continúa con el procesamiento. """
         # Obtener la hora de Colombia (UTC-5)
-        colombia_tz = pytz.timezone("America/Bogota")
+        colombia_tz = ZoneInfo("America/Bogota")
         current_time = datetime.now(colombia_tz)
 
         new_archivo = CGDArchivo(
@@ -497,7 +495,6 @@ class ArchivoService:
             new_file_key,
             archivo_id,
             acg_nombre_archivo,
-            0,
             receipt_handle,
             self.error_handling_service,
         )
@@ -651,7 +648,6 @@ class ArchivoService:
                     new_file_key,
                     archivo_id,
                     acg_nombre_archivo=acg_nombre_archivo,
-                    new_counter=0,
                     receipt_handle=receipt_handle,
                     error_handling_service=self.error_handling_service,
                 )

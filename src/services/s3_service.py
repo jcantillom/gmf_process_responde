@@ -113,7 +113,6 @@ class S3Utils:
             file_key: str,
             id_archivo: int,
             nombre_archivo: str,
-            contador_intentos_cargue: int,
             receipt_handle: str,
             error_handling_service
     ):
@@ -161,7 +160,6 @@ class S3Utils:
                         bucket_name=bucket_name,
                         receipt_handle=receipt_handle,
                         file_name=nombre_archivo,
-                        contador_intentos_cargue=contador_intentos_cargue,
                         codigo_error=env.CONST_COD_ERROR_UNEXPECTED_FILE_COUNT,
                         id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
                     )
@@ -190,7 +188,6 @@ class S3Utils:
                             bucket_name=bucket_name,
                             receipt_handle=receipt_handle,
                             file_name=nombre_archivo,
-                            contador_intentos_cargue=contador_intentos_cargue,
                             codigo_error=env.CONST_COD_ERROR_INVALID_FILE_SUFFIX,
                             id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
                         )
@@ -244,7 +241,6 @@ class S3Utils:
                 bucket_name=bucket_name,
                 receipt_handle=receipt_handle,
                 file_name=nombre_archivo,
-                contador_intentos_cargue=contador_intentos_cargue,
                 codigo_error=env.CONST_COD_ERROR_TECHNICAL_UNZIP,
                 id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
 
@@ -262,7 +258,6 @@ class S3Utils:
                 bucket_name=bucket_name,
                 receipt_handle=receipt_handle,
                 file_name=nombre_archivo,
-                contador_intentos_cargue=contador_intentos_cargue,
                 codigo_error=env.CONST_COD_ERROR_CORRUPTED_FILE,
                 id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
             )

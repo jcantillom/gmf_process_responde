@@ -1,7 +1,7 @@
 import logging
 import os
 import json
-import pytz
+from zoneinfo import ZoneInfo
 from datetime import datetime, timezone, timedelta
 from colorama import Fore, Style
 from dotenv import load_dotenv
@@ -23,7 +23,7 @@ class CustomFormatter(logging.Formatter):
 
     def format(self, record):
         # Configuración de tiempo
-        colombia_tz = pytz.timezone("America/Bogota")
+        colombia_tz = ZoneInfo("America/Bogota")
         record_time = datetime.now(colombia_tz).strftime("%Y-%m-%dT%H:%M:%SZ")
 
         # Obtener ruta relativa del módulo

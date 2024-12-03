@@ -323,19 +323,18 @@ class ArchivoValidator:
 
     @staticmethod
     def extract_date_from_filename(filename):
-        # Usar una expresión regular optimizada con \d en lugar de [0-9]
-        match = re.search(r'[A-Z]{2,}\d{2,}(\d{8})', filename)
-        if match:
-            potential_date = match.group(1)
-            try:
-                # Validar que sea una fecha válida
-                datetime.strptime(potential_date, '%Y%m%d')
-                return potential_date
-            except ValueError:
-                # Si no es válida, devolver None
-                print(f"Error en el formato de fecha {potential_date}.")
-                return None
-        return None
+        """
+        Extrae una fecha en formato YYYYMMDD que aparece justo antes del carácter '-' en el nombre del archivo.
+        """
+        try:
+            prefix = filename.split("-")[0]
+            potential_date = prefix[-8:]
+            datetime.strptime(potential_date, '%Y%m%d')
+            return potential_date
+        except (ValueError, IndexError):
+            # Si no es una fecha válida o el nombre es demasiado corto, devolver None
+            print(f"Error: {filename} no contiene una fecha válida.")
+            return None
 
 
 
