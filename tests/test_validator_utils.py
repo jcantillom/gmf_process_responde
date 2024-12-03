@@ -217,6 +217,7 @@ class TestArchivoValidator(unittest.TestCase):
         self.assertEqual(result, [])
 
     @patch.object(ArchivoValidator, 'is_special_prefix')
+    @patch("src.config.config.env.CONST_TIPO_RESPUESTA_ESPECIALES", new="03")
     def test_get_type_response_special_prefix(self, mock_is_special_prefix):
         """
         Prueba para archivos con prefijo especial.
@@ -228,8 +229,11 @@ class TestArchivoValidator(unittest.TestCase):
         # Ejecutar la función
         result = self.validator.get_type_response(filename)
 
+        # Verificar que el mock fue llamado
+        mock_is_special_prefix.assert_called_once_with(filename)
+
         # Verificar que devuelve "03"
-        self.assertEqual(result, "03")
+        self.assertEqual(result, "03", f"El valor devuelto fue '{result}' en lugar de '03'")
 
     def test_get_type_response_general_file_with_R(self):
         """
