@@ -51,8 +51,7 @@ class ArchivoRepository:
     def update_estado_archivo(
             self,
             nombre_archivo: str,
-            estado: str,
-            contador_intentos_cargue: int) -> None:
+            estado: str) -> None:
         """
         Actualiza el estado de un archivo en la base de datos.
 
@@ -64,7 +63,6 @@ class ArchivoRepository:
         """
         archivo = self.get_archivo_by_nombre_archivo(nombre_archivo)
         archivo.estado = estado
-        archivo.contador_intentos_cargue = contador_intentos_cargue
         self.db.commit()
 
     def check_special_file_exists(self, acg_nombre_archivo: str, tipo_archivo: str) -> bool:

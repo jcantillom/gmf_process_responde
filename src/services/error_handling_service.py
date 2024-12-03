@@ -105,7 +105,6 @@ class ErrorHandlingService:
         self.archivo_repository.update_estado_archivo(
             file_name,
             env.CONST_ESTADO_PROCESAMIENTO_RECHAZADO,
-            contador_intentos_cargue=contador_intentos_cargue,
         )
 
         # Llama a handle_error_master para enviar el mensaje de error

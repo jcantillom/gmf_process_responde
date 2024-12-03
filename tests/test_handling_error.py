@@ -109,5 +109,4 @@ class TestErrorHandlingService(unittest.TestCase):
         self.service.archivo_repository.update_estado_archivo.assert_called_once_with(
             file_name,
             env.CONST_ESTADO_PROCESAMIENTO_RECHAZADO,
-            contador_intentos_cargue=contador_intentos_cargue
         )

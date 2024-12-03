@@ -97,7 +97,6 @@ class TechnicalErrorService:
             self.archivo_repository.update_estado_archivo(
                 nombre_archivo=acg_nombre_archivo,
                 estado=env.CONST_ESTADO_PROCESA_PENDIENTE_REINTENTO,
-                contador_intentos_cargue=retry_count,
             )
 
             send_message_to_sqs_with_delay(
@@ -128,7 +127,6 @@ class TechnicalErrorService:
             self.archivo_repository.update_estado_archivo(
                 nombre_archivo=acg_nombre_archivo,
                 estado=env.CONST_ESTADO_PROCESAMIENTO_FALLIDO,
-                contador_intentos_cargue=retry_count,
             )
             # ============================================================
             #  validar si viene el id_rta_procesamiento para actualizar

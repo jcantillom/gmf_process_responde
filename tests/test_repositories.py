@@ -133,11 +133,11 @@ class TestArchivoRepository(unittest.TestCase):
 
         self.mock_db.query.return_value.filter.return_value.first.return_value = archivo_existente
 
-        self.repo.update_estado_archivo(nombre_archivo, estado_nuevo, contador_intentos_cargue)
+        self.repo.update_estado_archivo(nombre_archivo, estado_nuevo)
 
         # Verificar que el estado y el contador se actualizaron correctamente
         self.assertEqual(archivo_existente.estado, estado_nuevo)
-        self.assertEqual(archivo_existente.contador_intentos_cargue, contador_intentos_cargue)
+
 
         # Verificar que se haya hecho un commit en la base de datos
         self.mock_db.commit.assert_called_once()

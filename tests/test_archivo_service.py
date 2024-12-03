@@ -547,7 +547,7 @@ class TestMoveFileAndUpdateState(unittest.TestCase):
 
         # Verificar que se actualizó el estado en la base de datos
         self.service.archivo_repository.update_estado_archivo.assert_called_once_with(
-            acg_nombre_archivo, env.CONST_ESTADO_LOAD_RTA_PROCESSING, 0
+            acg_nombre_archivo, env.CONST_ESTADO_LOAD_RTA_PROCESSING,
         )
 
 
@@ -884,7 +884,7 @@ class TestProcessGeneralFile(unittest.TestCase):
 
         # Verificar que se actualizó el estado en la base de datos
         self.service.archivo_repository.update_estado_archivo.assert_called_once_with(
-            acg_nombre_archivo, env.CONST_ESTADO_LOAD_RTA_PROCESSING, 0
+            acg_nombre_archivo, env.CONST_ESTADO_LOAD_RTA_PROCESSING,
         )
 
 

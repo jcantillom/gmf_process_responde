@@ -236,7 +236,8 @@ class ArchivoService:
         """Mueve el archivo y actualiza su estado."""
         new_file_key = self.s3_utils.move_file_to_procesando(bucket, file_name)
         self.archivo_repository.update_estado_archivo(
-            acg_nombre_archivo, env.CONST_ESTADO_LOAD_RTA_PROCESSING, 0
+            acg_nombre_archivo,
+            env.CONST_ESTADO_LOAD_RTA_PROCESSING,
         )
         logger.debug(
             f"Se actualiza el estado del archivo a {env.CONST_ESTADO_LOAD_RTA_PROCESSING}",
@@ -251,10 +252,10 @@ class ArchivoService:
         ).id_archivo
 
         last_counter = (
-            self.rta_procesamiento_repository.get_last_contador_intentos_cargue(
-                int(archivo_id)
-            )
-        ) + 1
+                           self.rta_procesamiento_repository.get_last_contador_intentos_cargue(
+                               int(archivo_id)
+                           )
+                       ) + 1
         # Insertar en CGD_ARCHIVO_ESTADOS
         colombia_tz = pytz.timezone("America/Bogota")
         fecha_colombia = datetime.now(colombia_tz)
@@ -562,7 +563,7 @@ class ArchivoService:
 
             # Actualizar el estado del archivo en CGD_ARCHIVO.
             self.archivo_repository.update_estado_archivo(
-                acg_nombre_archivo, env.CONST_ESTADO_LOAD_RTA_PROCESSING, 0
+                acg_nombre_archivo, env.CONST_ESTADO_LOAD_RTA_PROCESSING,
             )
             last_counter = (
                     self.rta_procesamiento_repository.get_last_contador_intentos_cargue(
