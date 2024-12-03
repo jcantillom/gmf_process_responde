@@ -62,6 +62,6 @@ class CGDRtaProArchivosService:
             }
             send_message_to_sqs(queue_url, message_body, file.nombre_archivo)
 
-            self.cgd_rta_pro_archivos_repository.update_estado_to_enviado(file.id_archivo, file.nombre_archivo)
+            self.cgd_rta_pro_archivos_repository.update_estado_to_enviado(file.id_archivo, file.nombre_archivo, file.id_rta_procesamiento)
 
         logger.debug(f"Estado actualizado a 'ENVIADO' para archivo con ID {id_archivo}")

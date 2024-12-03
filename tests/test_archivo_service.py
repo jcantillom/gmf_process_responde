@@ -588,7 +588,7 @@ class TestInsertFileStates(unittest.TestCase):
 
         # Configurar los mocks para devolver valores simulados
         archivo_id = 123
-        contador_intentos = 2
+        contador_intentos = 0
         type_response = "01"
 
         self.service.archivo_repository.get_archivo_by_nombre_archivo.return_value.id_archivo = archivo_id
@@ -612,11 +612,12 @@ class TestInsertFileStates(unittest.TestCase):
         self.service.archivo_repository.get_archivo_by_nombre_archivo.assert_called_with(acg_nombre_archivo)
 
         # Verificar que se insertó en CGD_ARCHIVO_ESTADOS con la fecha fija mockeada
+        fecha_mock_formateada = fecha_mock.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
         self.service.estado_archivo_repository.insert_estado_archivo.assert_called_once_with(
             id_archivo=archivo_id,
             estado_inicial=estado,
             estado_final=env.CONST_ESTADO_LOAD_RTA_PROCESSING,
-            fecha_cambio_estado=fecha_mock,
+            fecha_cambio_estado=fecha_mock_formateada,
         )
 
         # Verificar que se insertó en CGD_RTA_PROCESAMIENTO
@@ -626,7 +627,7 @@ class TestInsertFileStates(unittest.TestCase):
             nombre_archivo_zip=file_name,
             tipo_respuesta=type_response,
             estado=env.CONST_ESTADO_INICIADO,
-            contador_intentos_cargue=contador_intentos
+            contador_intentos_cargue=contador_intentos + 1,
         )
 
 

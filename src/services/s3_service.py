@@ -276,6 +276,7 @@ class S3Utils:
 
     def get_cantidad_de_archivos_esperados_en_el_zip(self, id_archivo, nombre_archivo):
         tipo_respuesta = self.rta_procesamiento_repository.get_tipo_respuesta(id_archivo)
+        print("tipo_respuesta: ", tipo_respuesta)
         expected_file_count = {
             "01": 5,
             "02": 3,

@@ -55,14 +55,15 @@ class EnvironmentSettings(BaseSettings):
     CONST_ESTADO_SEND: str = ""
     CONST_TIPO_ARCHIVO_ESPECIAL: str = "05"
     CONST_PLATAFORMA_ORIGEN: str = ""
-    CONST_TIPO_ARCHIVO_GENERAL: str = ""
-    CONST_TIPO_ARCHIVO_GENERAL_REINTEGROS: str = ""
     PARAMETER_STORE_TRANSVERSAL: str = ""
     CONST_COD_ERROR_NAME_FILE: str = ""
     CONST_ESTADO_PROCESAMIENTO_FALLIDO: str = ""
     CONST_ID_PLANTILLA_ERROR_TECHNICAL: str = ""
     CONST_ESTADO_PROCESA_PENDIENTE_REINTENTO: str = ""
     LOG_FORMAT: str = ""
+    CONST_TIPO_RESPUESTA_DEBITO: str = ""
+    CONST_TIPO_RESPUESTA_REINTEGROS: str = ""
+    CONST_TIPO_RESPUESTA_ESPECIALES: str = ""
 
     model_config = ConfigDict(env_file=".env")
 

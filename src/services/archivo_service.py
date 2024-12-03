@@ -254,14 +254,17 @@ class ArchivoService:
             self.rta_procesamiento_repository.get_last_contador_intentos_cargue(
                 int(archivo_id)
             )
-        )
+        ) + 1
         # Insertar en CGD_ARCHIVO_ESTADOS
-        fecha_truncada = datetime.now().replace(microsecond=(datetime.now().microsecond // 1000) * 1000)
+        colombia_tz = pytz.timezone("America/Bogota")
+        fecha_colombia = datetime.now(colombia_tz)
+        fecha_formateada = fecha_colombia.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+
         self.estado_archivo_repository.insert_estado_archivo(
             id_archivo=int(archivo_id),
             estado_inicial=estado,
             estado_final=env.CONST_ESTADO_LOAD_RTA_PROCESSING,
-            fecha_cambio_estado=fecha_truncada,
+            fecha_cambio_estado=fecha_formateada,
         )
         logger.debug(
             f"Se inserta el estado del archivo {file_name} en CGD_ARCHIVO_ESTADOS",

@@ -332,7 +332,7 @@ class TestCGDRtaProArchivosRepository(unittest.TestCase):
         self.db_mock.query().filter().first.return_value = mock_file
 
         # Llamar a la función
-        self.repository.update_estado_to_enviado(id_archivo, nombre_archivo)
+        self.repository.update_estado_to_enviado(id_archivo, nombre_archivo, id_rta_procesamiento=456)
 
         # Verificar que el estado se actualizó y que se llamó a commit
         self.assertEqual(mock_file.estado, env.CONST_ESTADO_SEND)
@@ -347,7 +347,7 @@ class TestCGDRtaProArchivosRepository(unittest.TestCase):
         self.db_mock.query().filter().first.return_value = None
 
         # Llamar a la función
-        self.repository.update_estado_to_enviado(id_archivo, nombre_archivo)
+        self.repository.update_estado_to_enviado(id_archivo, nombre_archivo, id_rta_procesamiento=456)
 
         # Verificar que no se llamó a commit
         self.db_mock.commit.assert_not_called()

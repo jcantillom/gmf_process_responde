@@ -131,7 +131,8 @@ class TestSendPendingFilesToQueue(unittest.TestCase):
         # Verificar que se actualizó el estado de los archivos a "ENVIADO"
         self.assertEqual(self.service.cgd_rta_pro_archivos_repository.update_estado_to_enviado.call_count, len(pending_files))
         for file in pending_files:
-            self.service.cgd_rta_pro_archivos_repository.update_estado_to_enviado.assert_any_call(file.id_archivo, file.nombre_archivo)
+            self.service.cgd_rta_pro_archivos_repository.update_estado_to_enviado.assert_any_call(
+                file.id_archivo, file.nombre_archivo, file.id_rta_procesamiento)
 
 
 

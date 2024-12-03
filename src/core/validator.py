@@ -226,11 +226,11 @@ class ArchivoValidator:
         Obtiene el tipo de respuesta del archivo.
         """
         if self.is_special_prefix(filename):
-            return env.CONST_TIPO_ARCHIVO_ESPECIAL
+            return env.CONST_TIPO_RESPUESTA_ESPECIALES
         elif filename.startswith(env.CONST_PRE_GENERAL_FILE) and filename.endswith("-R.zip"):
-            return env.CONST_TIPO_ARCHIVO_GENERAL_REINTEGROS
+            return env.CONST_TIPO_RESPUESTA_REINTEGROS
         elif filename.startswith(env.CONST_PRE_GENERAL_FILE):
-            return env.CONST_TIPO_ARCHIVO_GENERAL
+            return env.CONST_TIPO_RESPUESTA_DEBITO
         else:
             logger.error("El archivo no cumple con ninguna estructura de tipo de respuesta.",
                          extra={"event_filename": {"filename": filename}})
