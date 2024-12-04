@@ -384,7 +384,7 @@ class TestValidarEstadoSpecialFile(unittest.TestCase):
         receipt_handle = "test_receipt_handle"
 
         # Llamar a la función
-        result = self.service.validar_estado_special_file(acg_nombre_archivo, bucket, receipt_handle)
+        result = self.service.validar_estado_special_file(acg_nombre_archivo)
 
         # Verificar que la función devuelve el estado
         self.assertEqual(result, estado_valido)
@@ -405,7 +405,7 @@ class TestValidarEstadoSpecialFile(unittest.TestCase):
         receipt_handle = "test_receipt_handle"
 
         # Llamar a la función
-        result = self.service.validar_estado_special_file(acg_nombre_archivo, bucket, receipt_handle)
+        result = self.service.validar_estado_special_file(acg_nombre_archivo)
 
         # Verificar que la función no devuelve nada
         self.assertIsNone(result)
@@ -425,7 +425,7 @@ class TestValidarEstadoSpecialFile(unittest.TestCase):
         receipt_handle = "test_receipt_handle"
 
         # Llamar a la función
-        self.service.validar_estado_special_file(acg_nombre_archivo, bucket, receipt_handle)
+        self.service.validar_estado_special_file(acg_nombre_archivo)
 
         # Verificar que se llama a sys.exit(1)
         mock_exit.assert_called_once_with(1)
