@@ -143,11 +143,12 @@ class ArchivoService:
         if self.archivo_validator.is_special_file(file_name):
             # Verificar si el archivo especial ya existe en la base de datos
             if self.check_existing_special_file(acg_nombre_archivo):
-                estado = self.validar_estado_special_file(
-                    acg_nombre_archivo, bucket, receipt_handle
-                )
+
+                estado = self.validar_estado_special_file(acg_nombre_archivo)
+
                 if estado:
                     self.procesar_archivo(bucket, file_name, acg_nombre_archivo, estado, receipt_handle)
+
                 else:
                     self.error_handling_service.handle_error_master(
                         id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
@@ -182,7 +183,7 @@ class ArchivoService:
             )
         return exists
 
-    def validar_estado_special_file(self, acg_nombre_archivo, bucket, receipt_handle):
+    def validar_estado_special_file(self, acg_nombre_archivo):
         # obtener el estado del archivo especial desde la base de datos
         estado = self.archivo_repository.get_archivo_by_nombre_archivo(
             acg_nombre_archivo).estado
