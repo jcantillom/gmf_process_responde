@@ -28,15 +28,12 @@ class ErrorHandlingService:
             bucket: str,
             receipt_handle: str,
             codigo_error: str,
-            filename: str):
+            filename: str,
+            enviar_mensaje_correo: bool = True):
         """
         Realiza el manejo completo de un error de archivo:
-        - Mueve el archivo a 'rechazados'
-        - Elimina el mensaje de la cola
-        - Válida que el archivo no esté en estado 'procesado'
-        - Envía un mensaje de error a la cola de SQS "emails-to-send"
-        - Registra el error en el log.
         """
+
         # ================================================================
         #            MOVER EL ARCHIVO A LA CARPETA DE RECHAZADOS
         # ================================================================
@@ -50,26 +47,40 @@ class ErrorHandlingService:
             receipt_handle=receipt_handle,
             filename=filename
         )
-        # Obtener datos del error
+
+        # ================================================
+        #          VALIDAR ESTADO DEL ARCHIVO
+        # ================================================
+        if not self.archivo_validator.is_not_processed_state(filename):
+            logger.error("El archivo se encuentra en estado procesado", extra={"event_filename": filename})
+            return
+
+        # ================================================
+        #          OBTENER DATOS DEL ERROR
+        # ================================================
         error = self.catalogo_error_repository.get_error_by_code(codigo_error)
         if not error:
-            logger.error("Error no encontrado en el catálogo", extra={"codigo_error": codigo_error})
+            logger.error(f"Error no encontrado en el catálogo de errores: {codigo_error}")
             return
+
         # ========================================================================================
-        #    ENVIAR MENSAJE DE ERROR A LA COLA DE CORREOS SQS, A LA COLA "emails-to-send"
+        #    OPCIONAL: ENVIAR MENSAJE DE ERROR A LA COLA DE CORREOS SQS, A LA COLA "emails-to-send"
         # ========================================================================================
-        # Validar que el archivo no este siendo procesado.
-        if not self.archivo_validator.is_not_processed_state(filename):
-            logger.error("El archivo se encuentra en estado procesado",
-                         extra={"filename": filename})
-            return
+        if enviar_mensaje_correo:
+            self.send_message_to_email_sqs(id_plantilla, error, filename)
+
+    # ================================================================
+    #            FUNCIONES AUXILIARES REUTILIZABLES
+    # ================================================================
+
+    def send_message_to_email_sqs(self, id_plantilla, error, filename):
+        """Construye y envía un mensaje de error a la cola de correos."""
         logger.debug("Enviando mensaje de error a la cola de correos SQS 'emails-to-send'")
 
         # Obtener parámetros de la plantilla
         mail_parameters = self.correo_parametro_repository.get_parameters_by_template(id_plantilla)
         if not mail_parameters:
-            logger.error("No se encontraron parámetros para la plantilla de correo",
-                         extra={"id_plantilla": id_plantilla})
+            logger.error(f"No se encontraron parámetros para la plantilla de correo: {id_plantilla}")
             return
 
         # Construir mensaje de error
@@ -114,4 +125,5 @@ class ErrorHandlingService:
             receipt_handle=receipt_handle,
             codigo_error=codigo_error,
             filename=file_name,
+            enviar_mensaje_correo=True
         )

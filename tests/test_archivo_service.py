@@ -410,9 +410,6 @@ class TestValidarEstadoSpecialFile(unittest.TestCase):
         # Verificar que la función no devuelve nada
         self.assertIsNone(result)
 
-        # Verificar que se llamó al servicio de manejo de errores
-        self.service.error_handling_service.handle_error_master.assert_called_once()
-
     @patch("src.utils.logger_utils")
     @patch("sys.exit")
     def test_archivo_sin_estado(self, mock_exit, mock_logger):
@@ -781,6 +778,7 @@ class TestHandleInvalidSpecialFile(unittest.TestCase):
             receipt_handle=receipt_handle,
             codigo_error=env.CONST_COD_ERROR_NAME_FILE,
             filename=file_name,
+            enviar_mensaje_correo=True,
         )
 
 
@@ -827,6 +825,7 @@ class TestProcessGeneralFile(unittest.TestCase):
             receipt_handle=receipt_handle,
             codigo_error=env.CONST_COD_ERROR_NOT_EXISTS_FILE,
             filename=file_name,
+            enviar_mensaje_correo=True,
         )
 
     @patch("src.utils.logger_utils")
@@ -856,6 +855,7 @@ class TestProcessGeneralFile(unittest.TestCase):
             receipt_handle=receipt_handle,
             codigo_error=env.CONST_COD_ERROR_STATE_FILE,
             filename=file_name,
+            enviar_mensaje_correo=False,
         )
 
     @patch("src.utils.logger_utils")

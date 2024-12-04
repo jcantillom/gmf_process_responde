@@ -77,6 +77,16 @@ class TestErrorHandlingService(unittest.TestCase):
         # Verificar que se obtuvo el error del catálogo
         self.service.catalogo_error_repository.get_error_by_code.assert_called_once_with(codigo_error)
 
+    def test_validate_is_not_processed_state(self):
+        # Datos de entrada para la función
+        filename = "file1.txt"
+
+        # Ejecutar la función que se está probando
+        self.service.archivo_validator.is_not_processed_state(filename)
+
+        # Verificar que se validó el estado del archivo
+        self.service.archivo_validator.is_not_processed_state.assert_called_once_with(filename)
+
     @patch("src.utils.logger_utils")
     def test_handle_unzip_error(self, mock_logger):
         # Datos de entrada para la función
@@ -109,3 +119,64 @@ class TestErrorHandlingService(unittest.TestCase):
             file_name,
             env.CONST_ESTADO_PROCESAMIENTO_RECHAZADO,
         )
+
+    @patch("src.services.error_handling_service.logger")
+    def test_log_for_error_not_in_catalog(self, mock_logger):
+        # Configura el mock del repositorio para devolver None (error no encontrado)
+        self.service.catalogo_error_repository.get_error_by_code.return_value = None
+
+        # Ejecuta la función bajo prueba
+        self.service.handle_error_master(
+            id_plantilla="template123",
+            filekey="file-to-move.txt",
+            bucket="my-bucket",
+            receipt_handle="receipt123",
+            codigo_error="ERROR123",
+            filename="file1.txt",
+        )
+
+        # Valida que el logger.error fue llamado con el mensaje esperado
+        mock_logger.error.assert_called_once_with(
+            "Error no encontrado en el catálogo de errores: ERROR123"
+        )
+
+    @patch("src.services.error_handling_service.logger")
+    def test_log_is_not_processed_state(self, mock_logger):
+        # Configura el mock del validador para devolver False (archivo ya procesado)
+        self.service.archivo_validator.is_not_processed_state.return_value = False
+
+        # Ejecuta la función bajo prueba
+        self.service.handle_error_master(
+            id_plantilla="template123",
+            filekey="file-to-move.txt",
+            bucket="my-bucket",
+            receipt_handle="receipt123",
+            codigo_error="ERROR123",
+            filename="file1.txt",
+        )
+
+        # Valida que el logger.error fue llamado con el mensaje esperado y extra
+        mock_logger.error.assert_called_once_with(
+            "El archivo se encuentra en estado procesado", extra={'event_filename': 'file1.txt'}
+        )
+
+    @patch('src.services.error_handling_service.logger')
+    def test_log_not_found_parameters(self, mock_logger):
+        # Configura el mock del repositorio para devolver una lista vacía
+        self.service.correo_parametro_repository.get_parameters_by_template.return_value = []
+
+        # Ejecuta la función
+        self.service.handle_error_master(
+            id_plantilla="template123",
+            filekey="file-to-move.txt",
+            bucket="my-bucket",
+            receipt_handle="receipt123",
+            codigo_error="ERROR123",
+            filename="file1.txt",
+        )
+
+        # Valida que el logger.error fue llamado con el mensaje esperado
+        mock_logger.error.assert_called_once_with(
+            "No se encontraron parámetros para la plantilla de correo: template123"
+        )
+

@@ -124,7 +124,7 @@ class ArchivoService:
         file_key = f"{env.DIR_RECEPTION_FILES}/{file_name}"
         if not self.s3_utils.check_file_exists_in_s3(bucket_name, file_key):
             logger.error(
-                "El archivo NO existe en el bucket ===> Se eliminara el mensaje de la cola",
+                "El archivo NO existe en el bucket. Se eliminara el mensaje de la cola",
                 extra={"event_filename": file_name}
             )
             delete_message_from_sqs(
@@ -147,12 +147,8 @@ class ArchivoService:
                     acg_nombre_archivo, bucket, receipt_handle
                 )
                 if estado:
-                    # procesar archivo
                     self.procesar_archivo(bucket, file_name, acg_nombre_archivo, estado, receipt_handle)
                 else:
-                    logger.error(
-                        f"El estado del archivo especial {file_name} no es válido."
-                    )
                     self.error_handling_service.handle_error_master(
                         id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
                         filekey=f"{env.DIR_RECEPTION_FILES}/{file_name}",
@@ -160,6 +156,7 @@ class ArchivoService:
                         receipt_handle=receipt_handle,
                         codigo_error=env.CONST_COD_ERROR_STATE_FILE,
                         filename=file_name,
+                        enviar_mensaje_correo=False,
                     )
             else:
                 logger.debug(
@@ -188,23 +185,14 @@ class ArchivoService:
     def validar_estado_special_file(self, acg_nombre_archivo, bucket, receipt_handle):
         # obtener el estado del archivo especial desde la base de datos
         estado = self.archivo_repository.get_archivo_by_nombre_archivo(
-            acg_nombre_archivo
-        ).estado
+            acg_nombre_archivo).estado
         file_name = acg_nombre_archivo + ".zip"
+
         if estado:
             if not self.archivo_validator.is_valid_state(estado):
                 logger.error(
                     f" El estado {estado} del archivo especial no es válido ",
-                    extra={"event_filename": file_name},
-                )
-                self.error_handling_service.handle_error_master(
-                    id_plantilla=env.CONST_ID_PLANTILLA_EMAIL,
-                    filekey=env.DIR_RECEPTION_FILES + "/" + file_name,
-                    bucket=bucket,
-                    receipt_handle=receipt_handle,
-                    codigo_error=env.CONST_COD_ERROR_STATE_FILE,
-                    filename=file_name,
-                )
+                    extra={"event_filename": file_name})
             else:
                 logger.debug(
                     f" El estado {estado} del archivo especial es válido",
@@ -369,6 +357,7 @@ class ArchivoService:
             receipt_handle=receipt_handle,
             codigo_error=env.CONST_COD_ERROR_NAME_FILE,
             filename=file_name,
+            enviar_mensaje_correo=True,
         )
         logger.error(
             f"Formato de archivo especial {file_name} no válido; mensaje eliminado."
@@ -385,10 +374,10 @@ class ArchivoService:
             # 3. Verificar si el archivo existe en la base de datos
             if not self.archivo_repository.check_file_exists(acg_nombre_archivo):
                 error_message = (
-                    "El archivo NO existe en la base de datos\n"
-                    "===> Se eliminara el mensaje de la cola ... \n"
-                    "===> Se movera el archivo a la carpeta de bucket/Rechazados ...\n"
-                    "===> Se Eliminara el archivo del bucket/Recibidos ..."
+                    "El archivo NO existe en la base de datos. "
+                    "Se eliminara el mensaje de la cola ... "
+                    "Se movera el archivo a la carpeta de bucket/Rechazados. "
+                    "Se Eliminara el archivo del bucket/Recibidos ..."
                 )
                 logger.error(
                     error_message,
@@ -401,6 +390,7 @@ class ArchivoService:
                     receipt_handle=receipt_handle,
                     codigo_error=env.CONST_COD_ERROR_NOT_EXISTS_FILE,
                     filename=file_name,
+                    enviar_mensaje_correo=True,
                 )
 
             # verificar si el archivo existe en la base de datos
@@ -425,6 +415,7 @@ class ArchivoService:
                         receipt_handle=receipt_handle,
                         codigo_error=env.CONST_COD_ERROR_STATE_FILE,
                         filename=file_name,
+                        enviar_mensaje_correo=False,
                     )
 
                 else:
@@ -441,6 +432,7 @@ class ArchivoService:
                 receipt_handle=receipt_handle,
                 codigo_error=env.CONST_COD_ERROR_NAME_FILE,
                 filename=file_name,
+                enviar_mensaje_correo=True,
             )
             logger.error(
                 f"Formato de archivo general {file_name} no válido; mensaje eliminado."
@@ -450,7 +442,8 @@ class ArchivoService:
         """ Inserta un nuevo archivo especial en la base de datos y continúa con el procesamiento. """
         # Obtener la hora de Colombia (UTC-5)
         colombia_tz = ZoneInfo("America/Bogota")
-        current_time = datetime.now(colombia_tz)
+        fecha_colombia = datetime.now(colombia_tz)
+        fecha_formateada = fecha_colombia.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
 
         new_archivo = CGDArchivo(
             id_archivo=create_file_id(filename),
@@ -459,7 +452,7 @@ class ArchivoService:
             estado=env.CONST_ESTADO_SEND,
             plataforma_origen=env.CONST_PLATAFORMA_ORIGEN,
             fecha_nombre_archivo=extract_date_from_filename(filename),
-            fecha_recepcion=current_time,
+            fecha_recepcion=fecha_formateada,
             contador_intentos_cargue=0,
             contador_intentos_generacion=0,
             contador_intentos_empaquetado=0,

@@ -12,6 +12,7 @@ from src.repositories.archivo_repository import ArchivoRepository
 from src.core.validator import ArchivoValidator
 from src.services.cgd_rta_pro_archivo_service import CGDRtaProArchivosService
 from src.core.custom_error import CustomFunctionError
+from zoneinfo import ZoneInfo
 
 
 class S3Utils:
@@ -133,7 +134,8 @@ class S3Utils:
         expected_file_count, tipo_respuesta = (
             self.get_cantidad_de_archivos_esperados_en_el_zip(id_archivo, nombre_archivo))
 
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        now_colombia = datetime.now(ZoneInfo("America/Bogota"))
+        timestamp = now_colombia.strftime("%Y%m%d%H%M%S")
         base_folder = file_key.rsplit("/", 1)[0]
         zip_filename = file_key.rsplit("/", 1)[-1].replace('.zip', '')
         destination_folder = f"{base_folder}/{zip_filename}_{timestamp}/"
