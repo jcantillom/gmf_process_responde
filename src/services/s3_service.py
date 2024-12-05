@@ -12,7 +12,7 @@ from src.repositories.archivo_repository import ArchivoRepository
 from src.core.validator import ArchivoValidator
 from src.services.cgd_rta_pro_archivo_service import CGDRtaProArchivosService
 from src.core.custom_error import CustomFunctionError
-from zoneinfo import ZoneInfo
+from src.utils.time_utils import get_current_colombia_time
 
 
 class S3Utils:
@@ -134,8 +134,7 @@ class S3Utils:
         expected_file_count, tipo_respuesta = (
             self.get_cantidad_de_archivos_esperados_en_el_zip(id_archivo, nombre_archivo))
 
-        now_colombia = datetime.now(ZoneInfo("America/Bogota"))
-        timestamp = now_colombia.strftime("%Y%m%d%H%M%S")
+        timestamp = get_current_colombia_time()
         base_folder = file_key.rsplit("/", 1)[0]
         zip_filename = file_key.rsplit("/", 1)[-1].replace('.zip', '')
         destination_folder = f"{base_folder}/{zip_filename}_{timestamp}/"
@@ -145,6 +144,9 @@ class S3Utils:
             with ZipFile(BytesIO(zip_obj['Body'].read())) as zip_file:
                 extracted_files = []
                 for file_info in zip_file.infolist():
+                    #omitir carpetas
+                    if file_info.is_dir():
+                        continue
                     # Crear la clave S3 para cada archivo descomprimido
                     extracted_file_key = f"{destination_folder}{file_info.filename}"
                     extracted_files.append(extracted_file_key)
@@ -170,6 +172,8 @@ class S3Utils:
                         error_details="La cantidad de archivos descomprimidos no es igual a la cantidad esperada",
                         is_technical_error=False,
                     )
+
+                    return
 
                 # validar la estructura del nombre de cada archivo descomprimido
                 for file_info in zip_file.infolist():
@@ -273,7 +277,6 @@ class S3Utils:
 
     def get_cantidad_de_archivos_esperados_en_el_zip(self, id_archivo, nombre_archivo):
         tipo_respuesta = self.rta_procesamiento_repository.get_tipo_respuesta(id_archivo)
-        print("tipo_respuesta: ", tipo_respuesta)
         expected_file_count = {
             "01": 5,
             "02": 3,
@@ -291,11 +294,10 @@ class S3Utils:
     def validar_cantidad_archivos_descomprimidos(self, extracted_files, expected_file_count):
         if len(extracted_files) != expected_file_count:
             self.logger.error(
-                "La cantidad de archivos descomprimidos no es igual a la cantidad esperada",
-                extra={"event_filename": extracted_files}
-            )
-            return None
-        return extracted_files
+                f"La cantidad de archivos descomprimidos no es igual a la cantidad esperada: " + str(
+                    len(extracted_files)) + " vs " + str(expected_file_count))
+            return False
+        return True
 
     # function para validar si hay archivos descomprimidos en la carpeta de procesando
     def validate_decompressed_files_in_processing(

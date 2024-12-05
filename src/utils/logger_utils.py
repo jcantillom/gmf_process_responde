@@ -1,8 +1,7 @@
 import logging
 import os
 import json
-from zoneinfo import ZoneInfo
-from datetime import datetime, timezone, timedelta
+from .time_utils import get_current_colombia_time
 from colorama import Fore, Style
 from dotenv import load_dotenv
 
@@ -23,8 +22,8 @@ class CustomFormatter(logging.Formatter):
 
     def format(self, record):
         # Configuración de tiempo
-        colombia_tz = ZoneInfo("America/Bogota")
-        record_time = datetime.now(colombia_tz).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+        record_time = get_current_colombia_time()
 
         # Obtener ruta relativa del módulo
         project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../"))

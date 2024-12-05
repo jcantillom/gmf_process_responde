@@ -1,4 +1,3 @@
-from datetime import datetime, timedelta
 from src.core.custom_error import CustomFunctionError
 from src.repositories.archivo_repository import ArchivoRepository
 from src.services.s3_service import S3Utils
@@ -25,7 +24,7 @@ import sys
 import time
 import json
 from .technical_error_service import TechnicalErrorService
-from zoneinfo import ZoneInfo
+from src.utils.time_utils import get_current_colombia_time
 
 logger = get_logger(env.DEBUG_MODE)
 
@@ -246,9 +245,7 @@ class ArchivoService:
                            )
                        ) + 1
         # Insertar en CGD_ARCHIVO_ESTADOS
-        colombia_tz = ZoneInfo("America/Bogota")
-        fecha_colombia = datetime.now(colombia_tz)
-        fecha_formateada = fecha_colombia.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        fecha_formateada = get_current_colombia_time()
 
         self.estado_archivo_repository.insert_estado_archivo(
             id_archivo=int(archivo_id),
@@ -442,9 +439,7 @@ class ArchivoService:
     def insertar_archivo_nuevo_especial(self, filename, acg_nombre_archivo):
         """ Inserta un nuevo archivo especial en la base de datos y continúa con el procesamiento. """
         # Obtener la hora de Colombia (UTC-5)
-        colombia_tz = ZoneInfo("America/Bogota")
-        fecha_colombia = datetime.now(colombia_tz)
-        fecha_formateada = fecha_colombia.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
+        fecha_formateada = get_current_colombia_time()
 
         new_archivo = CGDArchivo(
             id_archivo=create_file_id(filename),
@@ -545,7 +540,7 @@ class ArchivoService:
                 id_archivo=int(file_id),
                 estado_inicial=estado,
                 estado_final=env.CONST_ESTADO_LOAD_RTA_PROCESSING,
-                fecha_cambio_estado=datetime.now(),
+                fecha_cambio_estado=get_current_colombia_time(),
             )
             logger.debug(
                 "Se inserta el estado del archivo en CGD_ARCHIVO_ESTADOS",

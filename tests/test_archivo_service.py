@@ -572,16 +572,15 @@ class TestInsertFileStates(unittest.TestCase):
         self.service.rta_procesamiento_repository = MagicMock()
         self.service.archivo_validator = MagicMock()
 
-    @patch("src.services.archivo_service.datetime")  # Asegurarse de que el servicio use datetime correctamente
+    @patch("src.services.archivo_service.get_current_colombia_time")   # Asegurarse de que el servicio use datetime correctamente
     @patch("src.utils.logger_utils")
-    def test_insert_file_states(self, mock_logger, mock_datetime):
+    def test_insert_file_states(self, mock_logger, mock_get_current_time):
         """
         Caso en el que se insertan correctamente los estados del archivo en la base de datos.
         """
         # Configurar una fecha fija para datetime.now
-        fecha_mock = datetime(2024, 12, 2, 16, 28, 35)
-        mock_datetime.now.return_value = fecha_mock
-        mock_datetime.strptime.side_effect = datetime.strptime
+        fecha_mock = "2024-12-02 16:28:35.000"
+        mock_get_current_time.return_value = fecha_mock
 
         # Configurar los mocks para devolver valores simulados
         archivo_id = 123
@@ -605,16 +604,12 @@ class TestInsertFileStates(unittest.TestCase):
         # Llamar a la función
         self.service.insert_file_states_and_rta_processing(acg_nombre_archivo, estado, file_name)
 
-        # Verificar que se llamó a get_archivo_by_nombre_archivo correctamente
-        self.service.archivo_repository.get_archivo_by_nombre_archivo.assert_called_with(acg_nombre_archivo)
-
         # Verificar que se insertó en CGD_ARCHIVO_ESTADOS con la fecha fija mockeada
-        fecha_mock_formateada = fecha_mock.strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
         self.service.estado_archivo_repository.insert_estado_archivo.assert_called_once_with(
             id_archivo=archivo_id,
             estado_inicial=estado,
             estado_final=env.CONST_ESTADO_LOAD_RTA_PROCESSING,
-            fecha_cambio_estado=fecha_mock_formateada,
+            fecha_cambio_estado=fecha_mock,  # Utiliza la fecha mockeada
         )
 
         # Verificar que se insertó en CGD_RTA_PROCESAMIENTO

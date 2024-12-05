@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from src.core.validator import ArchivoValidator
 from src.repositories.rta_procesamiento_repository import RtaProcesamientoRepository
 from src.repositories.archivo_repository import ArchivoRepository
+from src.repositories.archivo_estado_repository import ArchivoEstadoRepository
+from src.utils.time_utils import get_current_colombia_time
 
 logger = get_logger(env.DEBUG_MODE)
 
@@ -20,6 +22,7 @@ class ErrorHandlingService:
         self.archivo_validator = ArchivoValidator()
         self.rta_procesamiento_repository = RtaProcesamientoRepository(db)
         self.archivo_repository = ArchivoRepository(db)
+        self.archivo_estado_repository = ArchivoEstadoRepository(db)
 
     def handle_error_master(
             self,
@@ -111,10 +114,21 @@ class ErrorHandlingService:
             estado=env.CONST_ESTADO_REJECTED
         )
 
+        estado_inicial = self.archivo_repository.get_archivo_by_nombre_archivo(file_name).estado
+
         # Actualiza el estado del archivo a PROCESAMIENTO_RECHAZADO
         self.archivo_repository.update_estado_archivo(
             file_name,
             env.CONST_ESTADO_PROCESAMIENTO_RECHAZADO,
+        )
+
+        # Actualiza el estado del archivo a RECHAZADO
+        self.archivo_estado_repository.insert_estado_archivo(
+            id_archivo=id_archivo,
+            estado_inicial=estado_inicial,
+            estado_final=env.CONST_ESTADO_PROCESAMIENTO_RECHAZADO,
+            fecha_cambio_estado=get_current_colombia_time()
+
         )
 
         # Llama a handle_error_master para enviar el mensaje de error
