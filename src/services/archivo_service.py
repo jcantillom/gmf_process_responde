@@ -65,7 +65,8 @@ class ArchivoService:
             return
 
         except CustomFunctionError as e:
-            logger.error(10                f"Error al procesar el archivo: {e.code} - {e.error_details}",
+            logger.error(
+                f"Error al procesar el archivo: {e.code} - {e.error_details}",
                 extra={"event_filename": file_name},
             )
             if e.is_technical_error:
