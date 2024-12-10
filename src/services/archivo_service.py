@@ -65,8 +65,7 @@ class ArchivoService:
             return
 
         except CustomFunctionError as e:
-            logger.error(
-                f"Error Tecnico al procesar el archivo: {e.code} - {e.error_details}",
+            logger.error(10                f"Error al procesar el archivo: {e.code} - {e.error_details}",
                 extra={"event_filename": file_name},
             )
             if e.is_technical_error:
@@ -239,11 +238,6 @@ class ArchivoService:
             acg_nombre_archivo
         ).id_archivo
 
-        last_counter = (
-                           self.rta_procesamiento_repository.get_last_contador_intentos_cargue(
-                               int(archivo_id)
-                           )
-                       ) + 1
         # Insertar en CGD_ARCHIVO_ESTADOS
         fecha_formateada = get_current_colombia_time()
 
@@ -268,7 +262,7 @@ class ArchivoService:
             nombre_archivo_zip=file_name,
             tipo_respuesta=type_response,
             estado=env.CONST_ESTADO_INICIADO,
-            contador_intentos_cargue=last_counter,
+            contador_intentos_cargue=1,
         )
         logger.debug(
             f"Se inserta la respuesta de procesamiento del archivo especial {file_name} en CGD_RTA_PROCESAMIENTO"

@@ -144,7 +144,7 @@ class S3Utils:
             with ZipFile(BytesIO(zip_obj['Body'].read())) as zip_file:
                 extracted_files = []
                 for file_info in zip_file.infolist():
-                    #omitir carpetas
+                    # omitir carpetas
                     if file_info.is_dir():
                         continue
                     # Crear la clave S3 para cada archivo descomprimido
@@ -294,7 +294,7 @@ class S3Utils:
     def validar_cantidad_archivos_descomprimidos(self, extracted_files, expected_file_count):
         if len(extracted_files) != expected_file_count:
             self.logger.error(
-                f"La cantidad de archivos descomprimidos no es igual a la cantidad esperada: " + str(
+                "La cantidad de archivos descomprimidos no es igual a la cantidad esperada: " + str(
                     len(extracted_files)) + " vs " + str(expected_file_count))
             return False
         return True
