@@ -104,7 +104,8 @@ class ErrorHandlingService:
             receipt_handle: str,
             file_name: str,
             codigo_error: str,
-            id_plantilla: str):
+            id_plantilla: str,
+            detail_error: str = None):
         """
         Maneja errores de archivos y actualiza los estados en la base de datos.
         """
@@ -122,6 +123,13 @@ class ErrorHandlingService:
             env.CONST_ESTADO_PROCESAMIENTO_RECHAZADO,
         )
 
+        # registrar el error en la tabla de CGD_ARCHIVO_ESTADO
+        self.archivo_repository.insert_code_error(
+            id_archivo=id_archivo,
+            code_error=codigo_error,
+            detail_error=detail_error,
+        )
+
         # Actualiza el estado del archivo a RECHAZADO
         self.archivo_estado_repository.insert_estado_archivo(
             id_archivo=id_archivo,
@@ -131,13 +139,24 @@ class ErrorHandlingService:
 
         )
 
+        # Insertar Error en la tabla CGD_RTA_PROCESAMIENTO
+        id_rta_procesamiento = (
+            self.rta_procesamiento_repository.get_last_rta_procesamiento(id_archivo).id_rta_procesamiento)
+        self.rta_procesamiento_repository.insert_code_error(
+            id_archivo=id_archivo,
+            rta_procesamiento_id=id_rta_procesamiento,
+            code_error=codigo_error,
+            detail_error=detail_error,
+        )
+
         # Llama a handle_error_master para enviar el mensaje de error
         self.handle_error_master(
-            id_plantilla=id_plantilla,
-            filekey=filekey,
-            bucket=bucket_name,
-            receipt_handle=receipt_handle,
-            codigo_error=codigo_error,
-            filename=file_name,
-            enviar_mensaje_correo=True
-        )
+        id_plantilla = id_plantilla,
+        filekey = filekey,
+        bucket = bucket_name,
+        receipt_handle = receipt_handle,
+        codigo_error = codigo_error,
+        filename = file_name,
+        enviar_mensaje_correo = True
+
+    )

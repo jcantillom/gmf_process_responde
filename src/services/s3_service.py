@@ -167,6 +167,7 @@ class S3Utils:
                         file_name=nombre_archivo,
                         codigo_error=env.CONST_COD_ERROR_UNEXPECTED_FILE_COUNT,
                         id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
+                        detail_error="La cantidad de archivos descomprimidos no es igual a la cantidad esperada"
                     )
                     raise CustomFunctionError(
                         code=env.CONST_COD_ERROR_UNEXPECTED_FILE_COUNT,
@@ -197,6 +198,7 @@ class S3Utils:
                             file_name=nombre_archivo,
                             codigo_error=env.CONST_COD_ERROR_INVALID_FILE_SUFFIX,
                             id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
+                            detail_error="Nombre del archivo descomprimido no cumple con la estructura esperada"
                         )
 
                     else:
@@ -250,6 +252,7 @@ class S3Utils:
                 file_name=nombre_archivo,
                 codigo_error=env.CONST_COD_ERROR_TECHNICAL_UNZIP,
                 id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
+                detail_error="Error técnico al descomprimir el archivo"
 
             )
             raise CustomFunctionError(
@@ -267,6 +270,7 @@ class S3Utils:
                 file_name=nombre_archivo,
                 codigo_error=env.CONST_COD_ERROR_CORRUPTED_FILE,
                 id_plantilla=env.CONST_ID_PLANTILLA_CORREO_ERROR_DECOMPRESION,
+                detail_error=".zip es inválido o está corrupto"
             )
             self.logger.error("Error al descomprimir el archivo .zip", extra={"event_filename": nombre_archivo})
             raise CustomFunctionError(
