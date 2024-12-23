@@ -5,6 +5,7 @@ from src.utils.logger_utils import get_logger
 from src.config.config import env
 from src.models.cgd_correo_parametro import CGDCorreosParametros
 import json
+from src.utils.time_utils import get_current_colombia_time
 
 logger = get_logger(env.DEBUG_MODE)
 
@@ -51,8 +52,9 @@ def build_email_message(
     Construye el mensaje de error que se enviará a la cola de correos.
     """
     # Formato de fecha y hora actual
-    fecha_formateada = datetime.now().strftime("%d/%m/%Y")
-    hora_formateada = datetime.now().strftime("%I:%M %p")
+    colombia_datetime = datetime.strptime(get_current_colombia_time(), "%Y-%m-%d %H:%M:%S.%f")
+    fecha_formateada = colombia_datetime.strftime("%d/%m/%Y")
+    hora_formateada = colombia_datetime.strftime("%I:%M %p")
 
     # Estructura del mensaje
     message = {
@@ -79,7 +81,7 @@ def build_email_message(
     return message
 
 
-#enviar mensaje a sqs con delay_seconds
+# enviar mensaje a sqs con delay_seconds
 def send_message_to_sqs_with_delay(queue_url: str, message_body: dict, filename: str, delay_seconds: int):
     """
     Envía un mensaje a una cola SQS con delay_seconds.
